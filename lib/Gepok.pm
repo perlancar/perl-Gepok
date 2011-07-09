@@ -8,9 +8,11 @@ use Log::Any '$log';
 use HTTP::Daemon;
 use HTTP::Daemon::SSL;
 use HTTP::Daemon::UNIX;
-use IO::Handle::Record; # needed for something, forgot what
+#use IO::Handle::Record; # needed for something, forgot what
+use IO::Scalar;
 use IO::Select;
-use Log::Any::Adapter;
+use Plack::Util;
+use SHARYANTO::Proc::Daemon::Prefork;
 
 use Moo;
 
@@ -33,9 +35,9 @@ has ssl_key_file           => (is => 'rw');
 has ssl_cert_file          => (is => 'rw');
 has start_servers          => (is => 'rw', default => sub{3});
 has max_requests_per_child => (is => 'rw', default=>sub{1000});
-has _daemon                => (is => 'rw'); # SHARYANTO::Proc::Daemon object
+has _daemon                => (is => 'rw'); # SHARYANTO::Proc::Daemon::Prefork
 has _server_socks          => (is => 'rw'); # store server sockets
-
+has _app                   => (is => 'rw'); # store PSGI app
 
 sub BUILD {
     my ($self) = @_;
@@ -53,7 +55,7 @@ sub BUILD {
         $self->scoreboard_path("/var/run/".$self->name.".scoreboard");
     }
     unless ($self->_daemon) {
-        my $daemon = SHARYANTO::Proc::Daemon->new(
+        my $daemon = SHARYANTO::Proc::Daemon::Prefork->new(
             name                    => $self->name,
             error_log_path          => $self->error_log_path,
             access_log_path         => $self->access_log_path,
@@ -69,9 +71,16 @@ sub BUILD {
     }
 }
 
-sub start {
-    my ($self) = @_;
+sub run {
+    my ($self, $app) = @_;
+    $self->_app($app);
     $self->_daemon->run;
+}
+
+# alias for run()
+sub start {
+    my $self = shift;
+    $self->run(@_);
 }
 
 sub stop {
@@ -167,60 +176,95 @@ sub _main_loop {
         my @ready = $sel->can_read();
         for my $s (@ready) {
             my $sock = $s->accept();
-            $self->_daemon->set_label('serving');
+            $self->_set_label_serving($sock);
             $self->_daemon->update_scoreboard({
                 req_start_time => time(),
                 num_reqs => $i,
                 state => "R",
             });
             while (my $req = $sock->get_request) {
-                eval {
-                    my $res = $self->process_request($r, $sock);
-                };
-                $self->access_log($r, $sock);
+                $self->_daemon->update_scoreboard({state => "W"});
+                my $res = $self->_handle_psgi($req, $sock);
+                $self->access_log($req, $res, $sock);
             }
             $self->_daemon->update_scoreboard({state => "_"});
         }
     }
 }
 
-sub process_request {
-    my ($self) = @_;
+sub handle_psgi {
+    my ($self, $req, $sock) = @_;
 
-    # XXX
-    $self->_daemon->update_scoreboard({state => "W"});
+    # to trap I/O errors or exception in psgi app
+    eval {
+        # construct $env for psgi app
+        my $env = $self->_construct_psgi_env($req, $sock);
+    };
 }
 
-sub ___set_req_vars {
-    my ($self) = @_;
+sub _construct_psgi_env {
+    my ($self, $req, $sock) = @_;
 
-    my $req = $self->req;
-    my $sock = $req->{sock};
+    my $is_unix = $sock->isa('HTTP::Daemon::UNIX');
+    my $is_ssl  = $sock->isa('HTTP::Daemon::SSL');
+    my $uri = $req->uri->as_string;
+    my $qs  = $uri =~ /.\?(.*)/ ? $1 : '';
+    my $env = {
+        REQUEST_METHOD  => $req->method,
+        SCRIPT_NAME     => '',
+        PATH_INFO       => '/',
+        REQUEST_URI     => $uri,
+        QUERY_STRING    => $qs,
+        SERVER_PORT     => $is_unix ? 0 : $sock->sockport,
+        SERVER_NAME     => $is_unix ? $sock->hostpath : $sock->sockaddr,
+        SERVER_PROTOCOL => 'HTTP/1.1',
+        REMOTE_ADDR     => $is_unix ? 'localhost' : $sock->peeraddr,
 
-    $req->{proto} = ''; # to avoid perl undef warning
-    if ($sock->isa("IO::Socket::UNIX")) {
-        $req->{proto}       = 'unix';
-        $req->{socket_path} = $sock->hostpath;
-        my ($pid, $uid, $gid)  = $sock->peercred;
-        $log->trace("Unix socket info: path=$req->{socket_path}, ".
+        'psgi.version'         => [ 1, 1 ],
+        'psgi.errors'          => *STDERR,
+        'psgi.url_scheme'      => $is_ssl ? 'https' : 'http',
+        'psgi.run_once'        => Plack::Util::FALSE,
+        'psgi.multithread'     => Plack::Util::FALSE,
+        'psgi.multiprocess'    => Plack::Util::TRUE,
+        'psgi.streaming'       => Plack::Util::TRUE,
+        'psgi.nonblocking'     => Plack::Util::FALSE,
+        'psgix.input.buffered' => Plack::Util::TRUE,
+        'psgix.io'             => $sock,
+        'psgix.input.buffered' => Plack::Util::TRUE,
+        'psgix.harakiri'       => Plack::Util::TRUE,
+    };
+    # HTTP_ vars
+    my $rh = $req->headers;
+    for my $hn ($rh->header_field_names) {
+        my $hun = uc($hn); $hun =~ s/^[A-Z0-9]/_/g;
+        $env->{"HTTP_$hun"} = join(", ", $rh->header($hn));
+    }
+    # XXX keep alive
+
+    $env;
+}
+
+sub _set_label_serving {
+    my ($self, $sock) = @_;
+
+    my $is_unix = $sock->isa('HTTP::Daemon::UNIX');
+
+    if ($is_unix) {
+        my $sockpath = $sock->hostpath;
+        my ($pid, $uid, $gid) = $sock->peercred;
+        $log->trace("Unix socket info: path=$sock_path, ".
                         "pid=$pid, uid=$uid, gid=$gid");
-        $req->{unix_uid}    = $uid;
-        $req->{unix_gid}    = $gid;
-
-        # XXX show unix socket path (if later we have more than one)
-        $self->_daemon->set_label("serving unix (pid=$pid, uid=$uid)");
+        $self->_daemon->set_label("serving unix (pid=$pid, uid=$uid, ".
+                                      "path=$sock_path)");
     } else {
-        $req->{proto}       = 'tcp';
-        $req->{server_port} = $sock->sockport;
-        $req->{https}       = 1 if $sock->sockport == 950;
-        $req->{remote_ip}   = $sock->peerhost;
-        $req->{remote_port} = $sock->peerport;
-        $self->_daemon->set_label(
-            join("",
-                 "serving ",
-                 $sock->sockport==$self->http_port ? 'http' : 'https',
-                 " (", $sock->peerhost, ":", $sock->peerport, ")",
-             ));
+        my $is_ssl = $sock->isa('HTTP::Daemon::SSL') ? 1:0;
+        my $server_port = $sock->sockport;
+        my $remote_ip   = $sock->peerhost;
+        my $remote_port = $sock->peerport;
+        $log->trace("TCP socket info: https=$is_ssl, server_port=$port, ".
+                        "remote_ip=$remote_ip, remote_port=$remote_port");
+        $self->_daemon->set_label("serving TCP :$server_port (https=$is_ssl, ".
+                                      "remote=$remote_ip:$remote_port)");
     }
 }
 
@@ -535,6 +579,10 @@ Create a new instance of server. %args can be used to set attributes.
 
 Start/run server and run the PSGI application $app.
 
+=head2 $gepok->start($app)
+
+Alias for run().
+
 =head2 $gepok->stop()
 
 Stop running server.
@@ -568,15 +616,23 @@ HTTP::Daemon::* objects to create a stand-alone web server.
 
 =head2 Performance notes?
 
-Not yet benchmarked, probably medium, not very performance-oriented. Based on
-HTTP::Daemon, which creates L<HTTP::Request> object for every request. Creates
-file-based scoreboard, which might or might not be a bottleneck. But, due to
-preforking nature, should be able to sustain up to hundreds of simultaneous
-clients on a single server (memory allowing).
+Gepok is not very performance-oriented. First, for convenience it is based on
+HTTP::Daemon, which is also not performance-oriented. For each HTTP request,
+HTTP::Daemon constructs an L<HTTP::Request> object, which copies request body
+into a scalar (and, for PSGI, needs to be presented as a stream using
+L<IO::Scalar>), and also involve creating other objects like L<URI> and
+L<HTTP::Headers>.
+
+Gepok also creates file-based scoreboard, which might or might not be a
+bottleneck.
+
+That being said, I find Gepok's performance adequate for small-scale uses.
+
+For more high-performant alternative, take a look at L<Starman> or use Nginx.
 
 =head2 How to do autorefresh?
 
-Create your own L<SHARYANTO::Proc::Daemon> object, setting its
+Create your own L<SHARYANTO::Proc::Daemon::Prefork> object, setting its
 'auto_reload_handler' and 'auto_reload_check_every' (along with the other
 arguments), then pass the object to Gepok's constructor in '_daemon' attribute.
 
