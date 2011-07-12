@@ -5,6 +5,8 @@ use strict;
 use warnings;
 use Log::Any '$log';
 
+# VERSION
+
 use HTTP::Daemon;
 use HTTP::Daemon::SSL;
 use HTTP::Daemon::UNIX;
