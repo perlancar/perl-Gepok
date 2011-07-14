@@ -33,6 +33,7 @@ has access_log_path        => (is => 'rw');
 has http_ports             => (is => 'rw', default => sub{[]});
 has https_ports            => (is => 'rw', default => sub{[]});
 has unix_sockets           => (is => 'rw', default => sub{[]});
+has run_as_root            => (is => 'rw', default => sub{0});
 has ssl_key_file           => (is => 'rw');
 has ssl_cert_file          => (is => 'rw');
 has start_servers          => (is => 'rw', default => sub{3});
@@ -67,6 +68,7 @@ sub BUILD {
             prefork                 => $self->start_servers,
             after_init              => sub { $self->_after_init },
             main_loop               => sub { $self->_main_loop },
+            run_as_root             => $self->run_as_root,
             # currently auto reloading is turned off
         );
         $self->_daemon($daemon);
@@ -75,6 +77,7 @@ sub BUILD {
 
 sub run {
     my ($self, $app) = @_;
+    $log->trace("x");
     $self->_app($app);
     $self->_daemon->run;
 }
@@ -187,6 +190,10 @@ sub _main_loop {
             while (my $req = $sock->get_request) {
                 $self->_daemon->update_scoreboard({state => "W"});
                 my $res = $self->_handle_psgi($req, $sock);
+                # XXX for efficiency, print psgi resp directly instead of
+                # converting to HTTP::Response first.
+                $res = $self->_convert_psgi_res_to_http_response($res);
+                $sock->print($res->as_string); # XXX eval to trap i/o error
                 $self->access_log($req, $res, $sock);
             }
             $self->_daemon->update_scoreboard({state => "_"});
@@ -194,14 +201,37 @@ sub _main_loop {
     }
 }
 
-sub handle_psgi {
+# return PSGI response
+sub _handle_psgi {
     my ($self, $req, $sock) = @_;
 
     # to trap I/O errors or exception in psgi app
+    my $res;
     eval {
         # construct $env for psgi app
         my $env = $self->_construct_psgi_env($req, $sock);
+        $res = $self->_app->($env);
     };
+    my $eval_err = $@;
+
+    $res //= [500, ["Content-Type" => "text/plain"],
+        ["PSGI app died before sending reply: $eval_err"]];
+
+    $res;
+}
+
+# convert psgi response to HTTP::Response object
+sub _convert_psgi_res_to_http_response {
+    my ($self, $res) = @_;
+    my $hres = HTTP::Response->new($res->[0]);
+    my $h = $res->[1];
+    my $i = 0;
+    while ($i < @$h) {
+        $hres->header($h->[$i] => $h->[$i+1]);
+        $i += 2;
+    }
+    $hres->content(join "", @{$res->[2]});
+    $hres;
 }
 
 sub _construct_psgi_env {
@@ -223,6 +253,7 @@ sub _construct_psgi_env {
         REMOTE_ADDR     => $is_unix ? 'localhost' : $sock->peeraddr,
 
         'psgi.version'         => [ 1, 1 ],
+        'psgi.input'           => IO::Scalar->new(\($req->{_content})),
         'psgi.errors'          => *STDERR,
         'psgi.url_scheme'      => $is_ssl ? 'https' : 'http',
         'psgi.run_once'        => Plack::Util::FALSE,
@@ -252,7 +283,7 @@ sub _set_label_serving {
     my $is_unix = $sock->isa('HTTP::Daemon::UNIX');
 
     if ($is_unix) {
-        my $sockpath = $sock->hostpath;
+        my $sock_path = $sock->hostpath;
         my ($pid, $uid, $gid) = $sock->peercred;
         $log->trace("Unix socket info: path=$sock_path, ".
                         "pid=$pid, uid=$uid, gid=$gid");
@@ -263,8 +294,13 @@ sub _set_label_serving {
         my $server_port = $sock->sockport;
         my $remote_ip   = $sock->peerhost;
         my $remote_port = $sock->peerport;
-        $log->trace("TCP socket info: https=$is_ssl, server_port=$port, ".
-                        "remote_ip=$remote_ip, remote_port=$remote_port");
+        if ($log->is_trace) {
+            $log->trace(join("",
+                             "TCP socket info: https=$is_ssl, ",
+                             "server_port=$server_port, ",
+                             "remote_ip=$remote_ip, ",
+                             "remote_port=$remote_port"));
+        }
         $self->_daemon->set_label("serving TCP :$server_port (https=$is_ssl, ".
                                       "remote=$remote_ip:$remote_port)");
     }
@@ -349,10 +385,9 @@ sub __send_http_response {
 }
 
 sub access_log {
-    my ($self, $req, ) = @_;
-    my $req = $self->req;
-    my $http_req = $req->{http_req};
-    my $resp = $self->resp;
+    my ($self, $req, $res, $sock) = @_;
+
+=for comment
 
     my $fmt = join(
         "",
@@ -419,6 +454,9 @@ sub access_log {
     } else {
         warn $logline;
     }
+
+=cut
+
 }
 
 1;
@@ -513,6 +551,12 @@ socket. Each element should be an absolute path.
 
 You must at least specify one ports (either http, https, unix_socket) or Gepok
 will refuse to run.
+
+=head2 run_as_root => BOOL (default 0)
+
+Whether to require running as root.
+
+Passed to SHARYANTO::Proc::Daemon::Prefork's constructor.
 
 =head2 pid_path => STR (default /var/run/<name>.pid)
 
