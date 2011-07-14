@@ -205,17 +205,8 @@ sub _main_loop {
 sub _handle_psgi {
     my ($self, $req, $sock) = @_;
 
-    # to trap I/O errors or exception in psgi app
-    my $res;
-    eval {
-        # construct $env for psgi app
-        my $env = $self->_construct_psgi_env($req, $sock);
-        $res = $self->_app->($env);
-    };
-    my $eval_err = $@;
-
-    $res //= [500, ["Content-Type" => "text/plain"],
-        ["PSGI app died before sending reply: $eval_err"]];
+    my $env = $self->_construct_psgi_env($req, $sock);
+    my $res = Plack::Util::run_app($self->_app, $env);
 
     $res;
 }
