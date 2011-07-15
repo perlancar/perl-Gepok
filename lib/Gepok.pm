@@ -682,11 +682,6 @@ value.
 
 Number of requests each child will serve until it exists.
 
-=head2 psgi_app => CODE
-
-Supply PSGI application. Optional. If not supplied, you'll need to subclass and
-provide process_request().
-
 
 =head1 METHODS
 
