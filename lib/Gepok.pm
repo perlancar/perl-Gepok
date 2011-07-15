@@ -653,19 +653,18 @@ HTTP::Daemon::* objects to create a stand-alone web server.
 
 =head2 Performance notes?
 
-Gepok is not very performance-oriented. First, for convenience it is based on
-HTTP::Daemon, which is also not performance-oriented. For each HTTP request,
+Thanks to preforking, Gepok has adequate performance and reliability handling
+multiple clients. But Gepok is not yet performance-tuned, or very
+performance-oriented to begin with. For convenience Gepok is based on
+HTTP::Daemon, which is also not too performance-oriented. For each HTTP request,
 HTTP::Daemon constructs an L<HTTP::Request> object, which copies request body
-into a scalar (and, for PSGI, needs to be presented as a stream using
-L<IO::Scalar>), and also involve creating other objects like L<URI> and
-L<HTTP::Headers>.
+into a scalar (and, for PSGI, needs to be re-presented as a stream using
+L<IO::Scalar>). Creating other objects like L<URI> and L<HTTP::Headers> are also
+involved. Gepok also creates file-based scoreboard, which might or might not be
+a bottleneck.
 
-Gepok also creates file-based scoreboard, which might or might not be a
-bottleneck.
-
-That being said, I find Gepok's performance adequate for small-scale uses.
-
-For more high-performant alternative, take a look at L<Starman> or use Nginx.
+Casual benchmarking on my PC shows that Gepok is about 2-4x slower than
+L<Starman> for "hello world" PSGI.
 
 =head2 How to do autorefresh?
 
