@@ -10,9 +10,12 @@ use Log::Any '$log';
 use HTTP::Daemon;
 use HTTP::Daemon::SSL;
 use HTTP::Daemon::UNIX;
+use HTTP::Date qw(time2str);
+use HTTP::Status qw(status_message);
 #use IO::Handle::Record; # needed for something, forgot what
 use IO::Scalar;
 use IO::Select;
+use IO::Socket qw(:crlf);
 use Plack::Util;
 use SHARYANTO::Proc::Daemon::Prefork;
 
@@ -41,6 +44,7 @@ has max_requests_per_child => (is => 'rw', default=>sub{1000});
 has _daemon                => (is => 'rw'); # SHARYANTO::Proc::Daemon::Prefork
 has _server_socks          => (is => 'rw'); # store server sockets
 has _app                   => (is => 'rw'); # store PSGI app
+has _client                => (is => 'rw'); # store client data
 
 sub BUILD {
     my ($self) = @_;
@@ -190,10 +194,6 @@ sub _main_loop {
             while (my $req = $sock->get_request) {
                 $self->_daemon->update_scoreboard({state => "W"});
                 my $res = $self->_handle_psgi($req, $sock);
-                # XXX for efficiency, print psgi resp directly instead of
-                # converting to HTTP::Response first.
-                $res = $self->_convert_psgi_res_to_http_response($res);
-                $sock->print($res->as_string); # XXX eval to trap i/o error
                 $self->access_log($req, $res, $sock);
             }
             $self->_daemon->update_scoreboard({state => "_"});
@@ -201,28 +201,112 @@ sub _main_loop {
     }
 }
 
-# return PSGI response
+# copied from Starman::Server, with some modifications
+sub _finalize_response {
+    my($self, $env, $res, $sock) = @_;
+
+    $self->_client({});
+    if ($env->{'psgix.harakiri.commit'}) {
+        $self->_client->{keepalive} = 0;
+        $self->_client->{harakiri}  = 1;
+    }
+
+    my $protocol = $env->{SERVER_PROTOCOL};
+    my $status   = $res->[0];
+    my $message  = status_message($status);
+
+    my(@headers, %headers);
+    push @headers, "$protocol $status $message";
+
+    # Switch on Transfer-Encoding: chunked if we don't know Content-Length.
+    my $chunked;
+    while (my ($k, $v) = splice @{$res->[1]}, 0, 2) {
+        next if $k eq 'Connection';
+        push @headers, "$k: $v";
+        $headers{lc $k} = $v;
+    }
+
+    if ($protocol eq 'HTTP/1.1') {
+        if (!exists $headers{'content-length'}) {
+            if ($status !~ /^1\d\d|[23]04$/) {
+                $log->debug("Using chunked transfer-encoding to send ".
+                                "unknown length body");
+                push @headers, 'Transfer-Encoding: chunked';
+                $chunked = 1;
+            }
+        } elsif (my $te = $headers{'transfer-encoding'}) {
+            if ($te eq 'chunked') {
+                $log->debug("Chunked transfer-encoding set for response");
+                $chunked = 1;
+            }
+        }
+    } else {
+        if (!exists $headers{'content-length'}) {
+            $log->debug("Disabling keep-alive after sending unknown length ".
+                            "body on $protocol");
+            $self->_client->{keepalive} = 0;
+        }
+    }
+
+    if (!$headers{date}) {
+        push @headers, "Date: " . time2str(time());
+    }
+
+    # Should we keep the connection open?
+    if ( $self->_client->{keepalive}) {
+        push @headers, 'Connection: keep-alive';
+    } else {
+        push @headers, 'Connection: close';
+    }
+
+    # Buffer the headers so they are sent with the first write() call
+    # This reduces the number of TCP packets we are sending
+    syswrite $sock, join($CRLF, @headers, '') . $CRLF;
+
+    if (defined $res->[2]) {
+        Plack::Util::foreach(
+            $res->[2],
+            sub {
+                my $buffer = $_[0];
+                if ($chunked) {
+                    my $len = length $buffer;
+                    return unless $len;
+                    $buffer = sprintf("%x", $len) . $CRLF . $buffer . $CRLF;
+                }
+                syswrite $sock, $buffer;
+                $log->debug("Wrote " . length($buffer) . " bytes");
+            });
+        syswrite $sock, "0$CRLF$CRLF" if $chunked;
+    } else {
+        return Plack::Util::inline_object(
+            write => sub {
+                my $buffer = $_[0];
+                if ($chunked) {
+                    my $len = length $buffer;
+                    return unless $len;
+                    $buffer = sprintf( "%x", $len ) . $CRLF . $buffer . $CRLF;
+                }
+                syswrite $sock, $buffer;
+                $log->debug("Wrote " . length($buffer) . " bytes");
+            },
+            close => sub {
+                syswrite $sock, "0$CRLF$CRLF" if $chunked;
+            }
+        );
+    }
+}
+
+# run PSGI app, send PSGI response to client, and return it
 sub _handle_psgi {
     my ($self, $req, $sock) = @_;
 
     my $env = $self->_construct_psgi_env($req, $sock);
     my $res = Plack::Util::run_app($self->_app, $env);
+    eval {
+        $self->_finalize_response($env, $res, $sock);
+    }; # trap i/o error when sending response
 
     $res;
-}
-
-# convert psgi response to HTTP::Response object
-sub _convert_psgi_res_to_http_response {
-    my ($self, $res) = @_;
-    my $hres = HTTP::Response->new($res->[0]);
-    my $h = $res->[1];
-    my $i = 0;
-    while ($i < @$h) {
-        $hres->header($h->[$i] => $h->[$i+1]);
-        $i += 2;
-    }
-    $hres->content(join "", @{$res->[2]});
-    $hres;
 }
 
 sub _construct_psgi_env {
@@ -638,10 +722,11 @@ This is a hook provided for subclasses to do something before the daemon is
 preforking. For example, you can preload Perl modules here so that each child
 doesn't have to load modules separately (= inefficient).
 
-=head2 $gepok->access_log()
+=head2 $gepok->access_log($req, $res, $sock)
 
 The default implementation uses the Apache combined format. Override if you want
-custom format.
+custom format. $res is HTTP::Request object, $res is PSGI response, $sock is the
+raw socket.
 
 
 =head1 FAQ
@@ -663,7 +748,7 @@ L<IO::Scalar>). Creating other objects like L<URI> and L<HTTP::Headers> are also
 involved. Gepok also creates file-based scoreboard, which might or might not be
 a bottleneck.
 
-Casual benchmarking on my PC shows that Gepok is about 2-4x slower than
+Casual benchmarking on my PC shows that Gepok is about 3-4x slower than
 L<Starman> for "hello world" PSGI.
 
 =head2 How to do autorefresh?
@@ -671,6 +756,11 @@ L<Starman> for "hello world" PSGI.
 Create your own L<SHARYANTO::Proc::Daemon::Prefork> object, setting its
 'auto_reload_handler' and 'auto_reload_check_every' (along with the other
 arguments), then pass the object to Gepok's constructor in '_daemon' attribute.
+
+
+=head1 CREDITS
+
+Some code portion taken from Starman.
 
 
 =head1 SEE ALSO
