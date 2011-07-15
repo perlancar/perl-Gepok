@@ -17,6 +17,7 @@ use IO::Scalar;
 use IO::Select;
 use IO::Socket qw(:crlf);
 use Plack::Util;
+use POSIX;
 use SHARYANTO::Proc::Daemon::Prefork;
 
 use Moo;
@@ -192,6 +193,7 @@ sub _main_loop {
                 state => "R",
             });
             while (my $req = $sock->get_request) {
+                $self->{_req_time} = time();
                 $self->_daemon->update_scoreboard({state => "W"});
                 my $res = $self->_handle_psgi($req, $sock);
                 $self->access_log($req, $res, $sock);
@@ -263,6 +265,7 @@ sub _finalize_response {
     # This reduces the number of TCP packets we are sending
     syswrite $sock, join($CRLF, @headers, '') . $CRLF;
 
+    my $body_size = 0;
     if (defined $res->[2]) {
         Plack::Util::foreach(
             $res->[2],
@@ -271,10 +274,11 @@ sub _finalize_response {
                 if ($chunked) {
                     my $len = length $buffer;
                     return unless $len;
+                    $body_size += $len;
                     $buffer = sprintf("%x", $len) . $CRLF . $buffer . $CRLF;
                 }
                 syswrite $sock, $buffer;
-                $log->debug("Wrote " . length($buffer) . " bytes");
+                #$log->debug("Wrote " . length($buffer) . " bytes");
             });
         syswrite $sock, "0$CRLF$CRLF" if $chunked;
     } else {
@@ -284,6 +288,7 @@ sub _finalize_response {
                 if ($chunked) {
                     my $len = length $buffer;
                     return unless $len;
+                    $body_size += $len;
                     $buffer = sprintf( "%x", $len ) . $CRLF . $buffer . $CRLF;
                 }
                 syswrite $sock, $buffer;
@@ -294,6 +299,7 @@ sub _finalize_response {
             }
         );
     }
+    $self->{_res_body_size} = $body_size;
 }
 
 # run PSGI app, send PSGI response to client, and return it
@@ -382,79 +388,42 @@ sub _set_label_serving {
     }
 }
 
+sub __escape {
+    my $s = shift;
+    $s =~ s/\n/\\n/g;
+    $s;
+}
+
+sub __escape_quote {
+    my $s = shift;
+    $s =~ s/\n/\\n/g;
+    $s =~ s/"/\\"/g;
+    $s;
+}
+
 sub access_log {
     my ($self, $req, $res, $sock) = @_;
 
-=for comment
-
-    my $fmt = join(
-        "",
-        "[%s] ", # time
-        "[%s] ", # from
-        "\"%s %s\" ", # HTTP method & URI
-        "[user %s] ",
-        "[mod %s] [sub %s] [args %s %s] ",
-        "[resp %s %s] [subt %s] [reqt %s]",
-        "%s", # extra info
-        "\n"
-    );
-    my $from;
-    if ($req->{proto} eq 'tcp') {
-        $from = $req->{remote_ip} . ":" .
-            ($req->{https} ? $self->https_port : $self->http_port);
-    } else {
-        $from = "unix";
-    }
-
-    my $args_s = $json->encode($self->{sub_args} // "");
-    my $args_len = length($args_s);
-    my $args_partial = $args_len > $self->access_log_max_args_len;
-    $args_s = substr($args_s, 0, $self->access_log_max_args_len)
-        if $args_partial;
-
-    my ($resp_s, $resp_len, $resp_partial);
-    if ($req->{access_log_mute_resp}) {
-        $resp_s = "*";
-        $resp_partial = 0;
-        $resp_len = "*";
-    } else {
-        $resp_s = $json->encode($self->resp // "");
-        $resp_len = length($resp_s);
-        $resp_partial = $resp_len > $self->access_log_max_resp_len;
-        $resp_s = substr($resp_s, 0, $self->access_log_max_resp_len)
-            if $resp_partial;
-    }
-
+    my $reqh = $req->headers;
     my $logline = sprintf(
-        $fmt,
-        scalar(localtime $req->{time_connect}[0]),
-        $from,
-        $http_req->method, $http_req->uri,
-        $req->{auth_user} // "-",
-        $req->{sub_module} // "-", $req->{sub_name} // "-",
-        $args_len.($args_partial ? "p" : ""), $args_s,
-        $resp_len.($resp_partial ? "p" : ""), $resp_s,
-        (!defined($req->{time_call_start}) ? "-" :
-             !defined($req->{time_call_end}) ? "D" :
-                 sprintf("%.3fms",
-                         1000*tv_interval($req->{time_call_start},
-                                          $req->{time_call_end}))),
-        sprintf("%.3fms",
-                1000*tv_interval($req->{time_connect},
-                                 $req->{time_finish_response})),
-        keys(%{$req->{log_extra}}) ? " ".$json->encode($req->{log_extra}) : "",
+        "%s - %s [%s] \"%s %s\" %d %d \"%s\" \"%s\"\n",
+        $sock->peerhost,
+        "-", # XXX auth user
+        POSIX::strftime("%d/%m/%Y:%H:%M:%S +0000", gmtime($self->{_req_time})),
+        $req->method,
+        __escape_quote($req->uri->as_string),
+        $res->[0],
+        $self->{_res_body_size} // "-",
+        scalar($reqh->header("referer")) // "-",
+        scalar($reqh->header("user-agent")) // "-",
     );
 
-    if ($self->_daemon->{daemonized}) {
-        #warn "Printing to access log $daemon->{_access_log}: $logline";
+    if ($self->daemonize) {
         # XXX rotating?
         syswrite($self->_daemon->{_access_log}, $logline);
     } else {
         warn $logline;
     }
-
-=cut
-
 }
 
 1;
