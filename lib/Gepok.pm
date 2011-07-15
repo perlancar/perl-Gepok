@@ -300,7 +300,7 @@ sub _finalize_response {
 sub _handle_psgi {
     my ($self, $req, $sock) = @_;
 
-    my $env = $self->_construct_psgi_env($req, $sock);
+    my $env = $self->_prepare_env($req, $sock);
     my $res = Plack::Util::run_app($self->_app, $env);
     eval {
         $self->_finalize_response($env, $res, $sock);
@@ -309,7 +309,8 @@ sub _handle_psgi {
     $res;
 }
 
-sub _construct_psgi_env {
+# prepare PSGI env
+sub _prepare_env {
     my ($self, $req, $sock) = @_;
 
     my $is_unix = $sock->isa('HTTP::Daemon::UNIX');
