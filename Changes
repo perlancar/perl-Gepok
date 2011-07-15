@@ -1,20 +1,5 @@
-Revision history for SHARYANTO-Utils
+Revision history for Gepok
 
-0.03    2011-07-??
-
-        [INCOMPATIBLE CHANGES]
-
-        - Rename SHARYANTO::Proc::Daemon{,::Prefork}
-
-
-0.02    2011-07-05
-
-        [ENHANCEMENTS]
-
-        - Proc::Daemon: add max_children(), can autoadjust number of processes
-          from prefork() to max_children() according to load.
-
-
-0.01    2011-06-17
+0.01    2011-07-15
 
         First release.
