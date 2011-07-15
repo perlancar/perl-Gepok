@@ -219,6 +219,11 @@ sub _finalize_response {
 
     my(@headers, %headers);
     push @headers, "$protocol $status $message";
+    {
+        no strict;
+        no warnings;
+        push @headers, "Server: ".ref($self)."/".${ref($self)."::VERSION"};
+    }
 
     # Switch on Transfer-Encoding: chunked if we don't know Content-Length.
     my $chunked;
@@ -406,7 +411,7 @@ sub access_log {
 
     my $reqh = $req->headers;
     my $logline = sprintf(
-        "%s - %s [%s] \"%s %s\" %d %d \"%s\" \"%s\"\n",
+        "%s - %s [%s] \"%s %s\" %d %s \"%s\" \"%s\"\n",
         $sock->peerhost,
         "-", # XXX auth user
         POSIX::strftime("%d/%m/%Y:%H:%M:%S +0000", gmtime($self->{_req_time})),
