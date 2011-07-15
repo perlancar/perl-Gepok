@@ -82,7 +82,6 @@ sub BUILD {
 
 sub run {
     my ($self, $app) = @_;
-    $log->trace("x");
     $self->_app($app);
     $self->_daemon->run;
 }
