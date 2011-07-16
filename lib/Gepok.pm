@@ -520,7 +520,7 @@ Just like http_ports, but for specifying ports for HTTPS.
 Location of Unix sockets. Default is none, which means not listening to Unix
 socket. Each element should be an absolute path.
 
-You must at least specify one ports (either http, https, unix_socket) or Gepok
+You must at least specify one port (either http, https, unix_socket) or Gepok
 will refuse to run.
 
 =head2 run_as_root => BOOL (default 0)
