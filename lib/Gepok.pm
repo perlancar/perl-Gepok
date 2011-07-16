@@ -7,6 +7,7 @@ use Log::Any '$log';
 
 # VERSION
 
+use File::HomeDir;
 use HTTP::Daemon;
 use HTTP::Daemon::SSL;
 use HTTP::Daemon::UNIX;
@@ -50,17 +51,21 @@ has _client                => (is => 'rw'); # store client data
 sub BUILD {
     my ($self) = @_;
 
+    my $is_root = $> ? 0 : 1;
+    my $log_dir = $is_root ? "/var/log" : File::HomeDir->my_home;
+    my $run_dir = $is_root ? "/var/run" : File::HomeDir->my_home;
+
     unless ($self->error_log_path) {
-        $self->error_log_path("/var/log/".$self->name."-error.log");
+        $self->error_log_path($log_dir."/".$self->name."-error.log");
     }
     unless ($self->access_log_path) {
-        $self->access_log_path("/var/log/".$self->name."-access.log");
+        $self->access_log_path($log_dir."/".$self->name."-access.log");
     }
     unless ($self->pid_path) {
-        $self->pid_path("/var/run/".$self->name.".pid");
+        $self->pid_path($run_dir."/".$self->name.".pid");
     }
     unless ($self->scoreboard_path) {
-        $self->scoreboard_path("/var/run/".$self->name.".scoreboard");
+        $self->scoreboard_path($run_dir."/".$self->name.".scoreboard");
     }
     unless ($self->_daemon) {
         my $daemon = SHARYANTO::Proc::Daemon::Prefork->new(
@@ -529,22 +534,22 @@ Whether to require running as root.
 
 Passed to SHARYANTO::Proc::Daemon::Prefork's constructor.
 
-=head2 pid_path => STR (default /var/run/<name>.pid)
+=head2 pid_path => STR (default /var/run/<name>.pid or ~/<name>.pid)
 
 Location of PID file.
 
-=head2 scoreboard_path => STR (default /var/run/<name>.scoreboard)
+=head2 scoreboard_path => STR (default /var/run/<name>.scoreboard or ~/<name>.scoreboard)
 
 Location of scoreboard file (used for communication between parent and child
 processes). If you disable this, autoadjusting number of children won't work
 (number of children will be kept at 'start_servers').
 
-=head2 error_log_path => STR (default /var/log/<name>-error.log)
+=head2 error_log_path => STR (default /var/log/<name>-error.log or ~/<name>-error.log)
 
 Location of error log. Default is /var/log/<name>-error.log. It will be opened
 in append mode.
 
-=head2 access_log_path => STR (default /var/log/<name>-access.log)
+=head2 access_log_path => STR (default /var/log/<name>-access.log or ~/<name>-access.log)
 
 Location of access log. It will be opened in append mode.
 
