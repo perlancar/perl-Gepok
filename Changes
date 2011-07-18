@@ -1,5 +1,23 @@
 Revision history for Gepok
 
+0.02    2011-07-18
+
+        [ENHANCEMENTS]
+
+        - Provide default log/pid/scoreboard dir under user's home directory
+          (instead of /var/log) for non-root user.
+
+        - Add Plack server test suite (not yet passing all).
+
+        [FIXES]
+
+        - (build) Add missing dependencies (Log::Any, Moo)
+
+        [ETC]
+
+        - Some documentation fixes/revising.
+
+
 0.01    2011-07-15
 
         First release.
