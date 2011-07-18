@@ -12,6 +12,7 @@ sub new {
         delete $self->{port};
         delete $self->{host};
     }
+    $self;
 }
 
 sub run {
