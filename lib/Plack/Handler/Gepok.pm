@@ -1,10 +1,16 @@
 package Plack::Handler::Gepok;
+
+use 5.010;
 use strict;
+use warnings;
+
 use Gepok;
 
 sub new {
     my $class = shift;
     my $self = bless { @_ }, $class;
+
+    $self->{daemonize} //= 0;
 
     # translate different option names
     if ($self->{port}) {
