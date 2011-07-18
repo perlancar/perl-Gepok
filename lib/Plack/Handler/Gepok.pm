@@ -4,7 +4,7 @@ use Gepok;
 
 sub new {
     my $class = shift;
-    my $self = bleass { @_ }, $class;
+    my $self = bless { @_ }, $class;
 
     # translate different option names
     if ($self->{port}) {
