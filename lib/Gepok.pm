@@ -472,7 +472,7 @@ In your program:
 
 Gepok creates one or more L<HTTP::Daemon> (for TCP/HTTP), L<HTTP::Daemon::SSL>
 (for TCP/HTTPS), L<HTTP::Daemon::UNIX> (for Unix socket/HTTP) objects to serve
-web requests over one or several ports. Some unique features:
+web requests over one or several ports. Some features:
 
 =over 4
 
