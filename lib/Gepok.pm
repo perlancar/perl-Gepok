@@ -487,12 +487,6 @@ Run any PSGI application/framework.
 
 =item * Runs on Unix platform
 
-=item * Autorefresh
-
-With some extra effort, can also support autorefresh (restarting itself whenever
-script/one of loaded Perl modules changes on disk). See
-L<SHARYANTO::Proc::Daemon::Prefork> for more details.
-
 =back
 
 This module uses L<Log::Any> for logging.
@@ -646,12 +640,6 @@ a bottleneck.
 
 Casual benchmarking on my PC shows that Gepok is about 3-4x slower than
 L<Starman> for "hello world" PSGI.
-
-=head2 How to do autorefresh?
-
-Create your own L<SHARYANTO::Proc::Daemon::Prefork> object, setting its
-'auto_reload_handler' and 'auto_reload_check_every' (along with the other
-arguments), then pass the object to Gepok's constructor in '_daemon' attribute.
 
 
 =head1 CREDITS
