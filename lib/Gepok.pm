@@ -287,10 +287,10 @@ sub _finalize_response {
             $res->[2],
             sub {
                 my $buffer = $_[0];
+                my $len = length $buffer;
+                $body_size += $len;
                 if ($chunked) {
-                    my $len = length $buffer;
                     return unless $len;
-                    $body_size += $len;
                     $buffer = sprintf("%x", $len) . $CRLF . $buffer . $CRLF;
                 }
                 syswrite $sock, $buffer;
@@ -301,10 +301,10 @@ sub _finalize_response {
         return Plack::Util::inline_object(
             write => sub {
                 my $buffer = $_[0];
+                my $len = length $buffer;
+                $body_size += $len;
                 if ($chunked) {
-                    my $len = length $buffer;
                     return unless $len;
-                    $body_size += $len;
                     $buffer = sprintf( "%x", $len ) . $CRLF . $buffer . $CRLF;
                 }
                 syswrite $sock, $buffer;
