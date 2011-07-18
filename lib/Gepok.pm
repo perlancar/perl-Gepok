@@ -236,6 +236,13 @@ sub _finalize_response {
         push @headers, "$k: $v";
         $headers{lc $k} = $v;
     }
+    # set content-length
+    if (defined($res->[2]) && !exists($headers{'content-length'})) {
+        my $cl = 0;
+        for (@{$res->[2]}) { $cl += length }
+        push @headers, "Content-Length: $cl";
+        $headers{'content-length'} = $cl;
+    }
 
     if ($protocol eq 'HTTP/1.1') {
         if (!exists $headers{'content-length'}) {
@@ -332,6 +339,7 @@ sub _prepare_env {
     my $is_ssl  = $sock->isa('HTTP::Daemon::SSL');
     my $uri = $req->uri->as_string;
     my $qs  = $uri =~ /.\?(.*)/ ? $1 : '';
+    #warn "uri=$uri, qs=$qs\n";
     my $env = {
         REQUEST_METHOD  => $req->method,
         SCRIPT_NAME     => '',
