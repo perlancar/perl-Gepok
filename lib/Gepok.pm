@@ -38,7 +38,7 @@ has access_log_path        => (is => 'rw');
 has http_ports             => (is => 'rw', default => sub{[]});
 has https_ports            => (is => 'rw', default => sub{[]});
 has unix_sockets           => (is => 'rw', default => sub{[]});
-has run_as_root            => (is => 'rw', default => sub{0});
+has require_root           => (is => 'rw', default => sub{0});
 has ssl_key_file           => (is => 'rw');
 has ssl_cert_file          => (is => 'rw');
 has start_servers          => (is => 'rw', default => sub{3});
@@ -78,7 +78,7 @@ sub BUILD {
             prefork                 => $self->start_servers,
             after_init              => sub { $self->_after_init },
             main_loop               => sub { $self->_main_loop },
-            run_as_root             => $self->run_as_root,
+            require_root            => $self->require_root,
             # currently auto reloading is turned off
         );
         $self->_daemon($daemon);
@@ -530,7 +530,7 @@ socket. Each element should be an absolute path.
 You must at least specify one port (either http, https, unix_socket) or Gepok
 will refuse to run.
 
-=head2 run_as_root => BOOL (default 0)
+=head2 require_root => BOOL (default 0)
 
 Whether to require running as root.
 
