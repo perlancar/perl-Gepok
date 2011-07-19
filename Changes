@@ -4,7 +4,7 @@ Revision history for Gepok
 
         [ENHANCEMENTS]
 
-        - Provide default log/pid/scoreboard dir under user's home directory
+        - Provide default {log,pid,scoreboard} dir under user's home directory
           (instead of /var/log) for non-root user.
 
         - Add Plack server test suite (not yet passing all).
