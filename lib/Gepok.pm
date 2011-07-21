@@ -20,6 +20,7 @@ use IO::Socket qw(:crlf);
 use Plack::Util;
 use POSIX;
 use SHARYANTO::Proc::Daemon::Prefork;
+use URI::Escape;
 
 use Moo;
 
@@ -351,12 +352,20 @@ sub _prepare_env {
     my $is_unix = $sock->isa('HTTP::Daemon::UNIX');
     my $is_ssl  = $sock->isa('HTTP::Daemon::SSL');
     my $uri = $req->uri->as_string;
-    my $qs  = $uri =~ /.\?(.*)/ ? $1 : '';
+    my ($qs, $pi);
+    if ($uri =~ /(.*)\?(.*)/) {
+        $pi = $1;
+        $qs = $2;
+    } else {
+        $pi = $uri;
+    }
+    $pi = uri_unescape($pi);
+
     #warn "uri=$uri, qs=$qs\n";
     my $env = {
         REQUEST_METHOD  => $req->method,
         SCRIPT_NAME     => '',
-        PATH_INFO       => '/',
+        PATH_INFO       => $pi,
         REQUEST_URI     => $uri,
         QUERY_STRING    => $qs,
         SERVER_PORT     => $is_unix ? 0 : $sock->sockport,
