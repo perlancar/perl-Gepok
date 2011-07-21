@@ -316,6 +316,8 @@ sub _finalize_response {
         );
     }
     $self->{_res_body_size} = $body_size;
+    $self->{_sock_peerhost} = $sock->peerhost; # cache first before close
+    $sock->close() unless $self->_client->{keepalive};
 }
 
 # run PSGI app, send PSGI response to client, and return it
@@ -424,7 +426,7 @@ sub access_log {
     my $reqh = $req->headers;
     my $logline = sprintf(
         "%s - %s [%s] \"%s %s\" %d %s \"%s\" \"%s\"\n",
-        $sock->peerhost,
+        $self->{_sock_peerhost},
         "-", # XXX auth user
         POSIX::strftime("%d/%m/%Y:%H:%M:%S +0000", gmtime($self->{_req_time})),
         $req->method,
