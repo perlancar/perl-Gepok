@@ -1,5 +1,12 @@
 Revision history for Gepok
 
+0.04    2011-07-21
+
+        [FIXES]
+
+        - Various fixes, now passes Plack server test suite.
+
+
 0.03    2011-07-21
 
         [INCOMPATIBLE CHANGES]
