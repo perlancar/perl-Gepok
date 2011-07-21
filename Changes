@@ -1,5 +1,26 @@
 Revision history for Gepok
 
+0.03    2011-07-21
+
+        [INCOMPATIBLE CHANGES]
+
+        - Rename attribute: 'run_as_root' -> 'require_root' (less ambiguous,
+          follows SHARYANTO::Proc::Daemon::Prefork).
+
+        [FIXES]
+
+        - Handle coderef PSGI response correctly.
+
+        - Pass some more server test suite tests (e.g. fixes on PATH_INFO,
+          HTTP_* variables)
+
+        - Some other fixes.
+
+        [ETC]
+
+        - Keep-Alive disabled for now.
+
+
 0.02    2011-07-18
 
         [ENHANCEMENTS]
