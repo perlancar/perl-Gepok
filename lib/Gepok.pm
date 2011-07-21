@@ -241,12 +241,8 @@ sub _finalize_response {
 
     my(@headers, %headers);
     push @headers, "$protocol $status $message";
-    {
-        no strict;
-        no warnings;
-        push @headers, "Server: ".
+    push @headers, "Server: ".
             $self->product_name."/".$self->product_version;
-    }
 
     # Switch on Transfer-Encoding: chunked if we don't know Content-Length.
     my $chunked;
@@ -254,13 +250,6 @@ sub _finalize_response {
         next if $k eq 'Connection';
         push @headers, "$k: $v";
         $headers{lc $k} = $v;
-    }
-    # set content-length
-    if (defined($res->[2]) && !exists($headers{'content-length'})) {
-        my $cl = 0;
-        for (@{$res->[2]}) { $cl += length }
-        push @headers, "Content-Length: $cl";
-        $headers{'content-length'} = $cl;
     }
 
     if ($protocol eq 'HTTP/1.1') {
