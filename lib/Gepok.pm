@@ -48,6 +48,8 @@ has _daemon                => (is => 'rw'); # SHARYANTO::Proc::Daemon::Prefork
 has _server_socks          => (is => 'rw'); # store server sockets
 has _app                   => (is => 'rw'); # store PSGI app
 has _client                => (is => 'rw'); # store client data
+has product_name           => (is => 'rw');
+has product_version        => (is => 'rw');
 
 sub BUILD {
     my ($self) = @_;
@@ -67,6 +69,13 @@ sub BUILD {
     }
     unless ($self->scoreboard_path) {
         $self->scoreboard_path($run_dir."/".$self->name.".scoreboard");
+    }
+    unless ($self->product_name) {
+        $self->product_name(ref($self));
+    }
+    unless (defined $self->product_version) {
+        no strict;
+        $self->product_version(${ref($self)."::VERSION"} // "0.0");
     }
     unless ($self->_daemon) {
         my $daemon = SHARYANTO::Proc::Daemon::Prefork->new(
@@ -235,7 +244,8 @@ sub _finalize_response {
     {
         no strict;
         no warnings;
-        push @headers, "Server: ".ref($self)."/".${ref($self)."::VERSION"};
+        push @headers, "Server: ".
+            $self->product_name."/".$self->product_version;
     }
 
     # Switch on Transfer-Encoding: chunked if we don't know Content-Length.
@@ -607,6 +617,16 @@ value.
 =head2 max_requests_per_child => INT (default 1000)
 
 Number of requests each child will serve until it exists.
+
+=head2 product_name => STR
+
+Used in 'Server' HTTP response header (<product_name>/<version>). Defaults to
+class name, e.g. "Gepok".
+
+=head2 product_version => STR
+
+Used in 'Server' HTTP response header (<product_name>/<version>). Defaults to
+$VERSION package variable.
 
 
 =head1 METHODS
