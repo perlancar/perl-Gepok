@@ -397,14 +397,14 @@ sub _prepare_env {
         'psgix.input.buffered' => Plack::Util::TRUE,
         'psgix.harakiri'       => Plack::Util::TRUE,
     };
+
     # HTTP_ vars
     my $rh = $req->headers;
     for my $hn ($rh->header_field_names) {
-        my $hun = uc($hn); $hun =~ s/[^A-Z0-9]/_/g;
-        next if $hun =~ /\A(?:CONTENT_(?:TYPE|LENGTH))\z/;
-        $env->{"HTTP_$hun"} = join(", ", $rh->header($hn));
+        my $key = uc($hn); $key =~ s/[^A-Z0-9]/_/g;
+        $key = "HTTP_$key" unless $key =~ /\A(?:CONTENT_(?:TYPE|LENGTH))\z/;
+        $env->{$key} = join(", ", $rh->header($hn));
     }
-    # XXX keep alive
 
     $env;
 }
