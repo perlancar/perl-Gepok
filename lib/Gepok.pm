@@ -382,7 +382,7 @@ sub _prepare_env {
     my $rh = $req->headers;
     for my $hn ($rh->header_field_names) {
         my $hun = uc($hn); $hun =~ s/[^A-Z0-9]/_/g;
-        next if $hun =~ /\A(?:CONTENT_TYPE)\z/;
+        next if $hun =~ /\A(?:CONTENT_(?:TYPE|LENGTH))\z/;
         $env->{"HTTP_$hun"} = join(", ", $rh->header($hn));
     }
     # XXX keep alive
