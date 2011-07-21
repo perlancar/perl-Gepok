@@ -118,12 +118,14 @@ sub _after_init {
     my ($self) = @_;
 
     my @server_socks;
+    my @server_sock_infos;
 
     for my $path (@{$self->unix_sockets}) {
         $log->infof("Binding to Unix socket %s (http) ...", $path);
         my $sock = HTTP::Daemon::UNIX->new(Local=>$path);
         die "Unable to bind to Unix socket $path" unless $sock;
         push @server_socks, $sock;
+        push @server_sock_infos, "$path (unix)";
     }
 
     for my $port (@{$self->http_ports}) {
@@ -141,6 +143,7 @@ sub _after_init {
         my $sock = HTTP::Daemon->new(%args);
         die "Unable to bind to TCP socket $port" unless $sock;
         push @server_socks, $sock;
+        push @server_sock_infos, "$port (tcp)";
     }
 
     for my $port (@{$self->https_ports}) {
@@ -167,12 +170,14 @@ sub _after_init {
         die "Unable to bind to TCP socket $port, common cause include ".
             "port taken or missing server key/cert file" unless $sock;
         push @server_socks, $sock;
+        push @server_sock_infos, "$port (tcp, https)";
     }
 
     die "Please specify at least one HTTP/HTTPS/Unix socket port"
         unless @server_socks;
 
     $self->_server_socks(\@server_socks);
+    warn "Will be binding to ".join(", ", @server_sock_infos)."\n";
     $self->before_prefork();
 }
 
