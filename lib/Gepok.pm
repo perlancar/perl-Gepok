@@ -216,6 +216,8 @@ sub _main_loop {
 sub _finalize_response {
     my($self, $env, $res, $sock) = @_;
 
+    $self->{_sock_peerhost} = $sock->peerhost; # cache first before close
+
     $self->_client({});
     if ($env->{'psgix.harakiri.commit'}) {
         $self->_client->{keepalive} = 0;
@@ -225,6 +227,7 @@ sub _finalize_response {
     my $protocol = $env->{SERVER_PROTOCOL};
     my $status   = $res->[0];
     my $message  = status_message($status);
+    $self->{_res_status} = $status;
 
     my(@headers, %headers);
     push @headers, "$protocol $status $message";
@@ -321,7 +324,6 @@ sub _finalize_response {
         );
     }
     $self->{_res_body_size} = $body_size;
-    $self->{_sock_peerhost} = $sock->peerhost; # cache first before close
     $sock->close() unless $self->_client->{keepalive};
 }
 
@@ -332,7 +334,11 @@ sub _handle_psgi {
     my $env = $self->_prepare_env($req, $sock);
     my $res = Plack::Util::run_app($self->_app, $env);
     eval {
-        $self->_finalize_response($env, $res, $sock);
+        if (ref $res eq 'CODE') {
+            $res->(sub { $self->_finalize_response($env, $_[0], $sock) });
+        } else {
+            $self->_finalize_response($env, $res, $sock);
+        }
     }; # trap i/o error when sending response
 
     $res;
@@ -426,7 +432,7 @@ sub __escape_quote {
 }
 
 sub access_log {
-    my ($self, $req, $res, $sock) = @_;
+    my ($self, $req, $sock) = @_;
 
     my $reqh = $req->headers;
     my $logline = sprintf(
@@ -436,7 +442,7 @@ sub access_log {
         POSIX::strftime("%d/%m/%Y:%H:%M:%S +0000", gmtime($self->{_req_time})),
         $req->method,
         __escape_quote($req->uri->as_string),
-        $res->[0],
+        $self->{_res_status},
         $self->{_res_body_size} // "-",
         scalar($reqh->header("referer")) // "-",
         scalar($reqh->header("user-agent")) // "-",
