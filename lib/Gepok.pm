@@ -325,7 +325,6 @@ sub _finalize_response {
         );
     }
     $self->{_res_body_size} = $body_size;
-    $sock->close() unless $self->_client->{keepalive};
 }
 
 # run PSGI app, send PSGI response to client, and return it
