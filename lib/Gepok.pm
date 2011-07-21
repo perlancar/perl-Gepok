@@ -392,7 +392,7 @@ sub _prepare_env {
 sub _set_label_serving {
     my ($self, $sock) = @_;
 
-    my $is_unix = $sock->isa('HTTP::Daemon::UNIX');
+    my $is_unix = $sock && $sock->isa('HTTP::Daemon::UNIX');
 
     if ($is_unix) {
         my $sock_path = $sock->hostpath;
