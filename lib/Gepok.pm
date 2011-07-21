@@ -358,6 +358,7 @@ sub _prepare_env {
         $qs = $2;
     } else {
         $pi = $uri;
+        $qs = "";
     }
     $pi = uri_unescape($pi);
 
