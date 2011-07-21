@@ -368,7 +368,7 @@ sub _prepare_env {
         REQUEST_URI     => $uri,
         QUERY_STRING    => $qs,
         SERVER_PORT     => $is_unix ? 0 : $sock->sockport,
-        SERVER_NAME     => $is_unix ? $sock->hostpath : $sock->sockaddr,
+        SERVER_NAME     => $is_unix ? $sock->hostpath : $sock->sockhost,
         SERVER_PROTOCOL => 'HTTP/1.1',
         REMOTE_ADDR     => $is_unix ? 'localhost' : $sock->peerhost,
 
