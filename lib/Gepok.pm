@@ -663,8 +663,8 @@ raw socket.
 
 =head2 Why the name Gepok?
 
-Gepok is an Indonesian word, meaning bundle. This class bundles one or several
-HTTP::Daemon::* objects to create a stand-alone web server.
+Gepok is an Indonesian word, meaning bundle/bunch. This class bundles one or
+several HTTP::Daemon::* objects to create a stand-alone web server.
 
 =head2 Performance notes?
 
