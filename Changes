@@ -1,5 +1,10 @@
 Revision history for Gepok
 
+0.06    2011-08-05
+
+        No functional changes. Polish POD.
+
+
 0.05    2011-08-05
 
         - Work better with plackup: accept string (comma-separator) http_ports,
