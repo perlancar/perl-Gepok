@@ -693,6 +693,9 @@ a bottleneck.
 Casual benchmarking on my PC shows that Gepok is about 3-4x slower than
 L<Starman> for "hello world" PSGI.
 
+I am using Gepok primarily with L<Sub::Spec::HTTP::Server> for serving remote
+API requests, in which HTTPS support is required.
+
 
 =head1 CREDITS
 
