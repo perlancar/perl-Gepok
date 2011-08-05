@@ -706,11 +706,8 @@ L<PSGI> and L<Plack>.
 HTTP server classes used: L<HTTP::Daemon>, L<HTTP::Daemon::SSL>,
 L<HTTP::Daemon::UNIX>.
 
-L<Starman>, a high-performance preforking Perl HTTP server which also supports
-Unix socket and multiple ports, but doesn't support HTTPS out-of-the-box.
-
-L<Starlet>
-
-L<HTTP::Server::PSGI>
+Alternative PSGI servers: L<Starman> (a high-performance preforking Perl HTTP
+server which also supports Unix socket and multiple ports, but doesn't support
+HTTPS out-of-the-box), L<Starlet>, L<HTTP::Server::PSGI>.
 
 =cut
