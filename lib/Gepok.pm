@@ -467,14 +467,14 @@ sub access_log {
 
     if ($self->daemonize) {
         syswrite($self->_daemon->{_access_log}, $logline);
-    } elsif (!define($ENV{PLACK_ENV})) {
+    } elsif (!defined($ENV{PLACK_ENV})) {
         warn $logline;
     }
 }
 
 1;
-__END__
 # ABSTRACT: Preforking HTTP server, HTTPS/Unix socket/multiports/PSGI
+__END__
 
 =head1 SYNOPSIS
 
