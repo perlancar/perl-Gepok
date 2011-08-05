@@ -473,7 +473,7 @@ sub access_log {
 }
 
 1;
-# ABSTRACT: Preforking HTTP server, HTTPS/Unix socket/multiports/PSGI
+# ABSTRACT: PSGI server with HTTPS/Unix socket/preforking
 __END__
 
 =head1 SYNOPSIS
@@ -482,7 +482,7 @@ To run with plackup:
 
  % plackup -s Gepok
 
-To run on our own:
+To run standalone:
 
  #!/usr/bin/perl
  use Gepok;
