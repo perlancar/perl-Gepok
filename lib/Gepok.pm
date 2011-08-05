@@ -456,7 +456,7 @@ sub access_log {
         "%s - %s [%s] \"%s %s\" %d %s \"%s\" \"%s\"\n",
         $self->{_sock_peerhost},
         "-", # XXX auth user
-        POSIX::strftime("%d/%m/%Y:%H:%M:%S +0000", gmtime($self->{_req_time})),
+        POSIX::strftime("%d/%b/%Y:%H:%M:%S +0000", gmtime($self->{_req_time})),
         $req->method,
         __escape_quote($req->uri->as_string),
         $self->{_res_status},
