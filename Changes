@@ -1,5 +1,15 @@
 Revision history for Gepok
 
+0.05    2011-08-05
+
+        - Work better with plackup: accept string (comma-separator) http_ports,
+          https_ports, unix_sockets so they can be specified as command-line
+          options (--http_ports, and so on). Do not print access log to STDERR
+          under plackup, since plackup by default prints one too.
+
+        - Fix access log format: 31/Aug/2011, not 31/08/2011.
+
+
 0.04    2011-07-21
 
         [FIXES]
