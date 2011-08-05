@@ -480,7 +480,7 @@ __END__
 
 To run with plackup:
 
- % plackup -s Gepok
+ % plackup -s Gepok --daemonize
 
 To run standalone:
 
@@ -517,10 +517,6 @@ usually recommend running behind Nginx or some other external HTTPS proxy.
 Good performance and reliability.
 
 =item * Multiple interface and Unix socket
-
-=item * PSGI
-
-Run any PSGI application/framework.
 
 =item * Runs on Unix platform
 
