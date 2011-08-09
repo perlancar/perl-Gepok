@@ -20,6 +20,7 @@ use IO::Socket qw(:crlf);
 use Plack::Util;
 use POSIX;
 use SHARYANTO::Proc::Daemon::Prefork;
+use Time::HiRes qw(gettimeofday);
 use URI::Escape;
 
 use Moo;
@@ -212,6 +213,7 @@ sub _main_loop {
         my @ready = $sel->can_read();
         for my $s (@ready) {
             my $sock = $s->accept();
+            $self->{_connect_time} = [gettimeofday];
             $self->_set_label_serving($sock);
             $self->_daemon->update_scoreboard({
                 req_start_time => time(),
@@ -219,7 +221,7 @@ sub _main_loop {
                 state => "R",
             });
             while (my $req = $sock->get_request) {
-                $self->{_req_time} = time();
+                $self->{_finish_req_time} = [gettimeofday];
                 $self->_daemon->update_scoreboard({state => "W"});
                 my $res = $self->_handle_psgi($req, $sock);
                 $self->access_log($req, $res, $sock);
@@ -392,6 +394,9 @@ sub _prepare_env {
         'psgix.io'             => $sock,
         'psgix.input.buffered' => Plack::Util::TRUE,
         'psgix.harakiri'       => Plack::Util::TRUE,
+
+        'gepok.connect_time'        => $self->{_connect_time},
+        'gepok.finish_request_time' => $self->{_finish_req_time},
     };
 
     # HTTP_ vars
@@ -456,7 +461,8 @@ sub access_log {
         "%s - %s [%s] \"%s %s\" %d %s \"%s\" \"%s\"\n",
         $self->{_sock_peerhost},
         "-", # XXX auth user
-        POSIX::strftime("%d/%b/%Y:%H:%M:%S +0000", gmtime($self->{_req_time})),
+        POSIX::strftime("%d/%b/%Y:%H:%M:%S +0000",
+                        gmtime($self->{_finish_req_time})),
         $req->method,
         __escape_quote($req->uri->as_string),
         $self->{_res_status},
