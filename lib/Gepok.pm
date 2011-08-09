@@ -535,6 +535,26 @@ This module uses L<Log::Any> for logging.
 This module uses L<Moo> for object system.
 
 
+=head1 PSGI ENVIRONMENT
+
+Gepok adds the following server-specific keys in the PSGI environment passed to
+application/middleware:
+
+=over 4
+
+=item * gepok.connect_time
+
+A 2-element arrayref (produced by Time::HiRes' gettimeofday()), clocked at
+connect time.
+
+=item * gepok.finish_request_time
+
+A 2-element arrayref (produced by Time::HiRes' gettimeofday()), clocked right
+after Gepok has received the complete request from client.
+
+=back
+
+
 =head1 ATTRIBUTES
 
 =head2 name => STR (default is basename of $0)
