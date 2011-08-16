@@ -1,5 +1,12 @@
 Revision history for Gepok
 
+0.10    2011-08-16
+
+        - (internal) Minor refactoring on _finalize_response.
+
+        - Provide 'gepok' and 'HTTPS' in $env.
+
+
 0.09    2011-08-09
 
         - Provide gepok.{connect_time,finish_request_time} in $env.
