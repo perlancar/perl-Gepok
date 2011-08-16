@@ -395,9 +395,12 @@ sub _prepare_env {
         'psgix.input.buffered' => Plack::Util::TRUE,
         'psgix.harakiri'       => Plack::Util::TRUE,
 
+        # additional/server-specific
+        'gepok'                     => 1,
         'gepok.connect_time'        => $self->{_connect_time},
         'gepok.finish_request_time' => $self->{_finish_req_time},
     };
+    $env->{HTTPS} = 'on' if $is_ssl;
 
     # HTTP_ vars
     my $rh = $req->headers;
