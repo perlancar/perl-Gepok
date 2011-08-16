@@ -269,7 +269,8 @@ sub _finalize_response {
     my $chunked;
     if ($protocol eq 'HTTP/1.1') {
         $chunked = 1 if $status =~ /^[123]/;
-        $self->_client->{keepalive} //= 1;
+        # disable for now, can't detect client protocol
+        #$self->_client->{keepalive} //= 1;
         if (my $te = $headers{'transfer-encoding'}) {
             if ($te eq 'chunked') {
                 #$log->trace("Chunked transfer-encoding set for response");
