@@ -235,7 +235,6 @@ sub _main_loop {
 # response and send it to client.
 sub _finalize_response {
     my($self, $env, $res, $sock) = @_;
-    my $req = Plack::Request->new($env);
 
     $self->{_sock_peerhost} = $sock->peerhost; # cache first before close
 
@@ -245,10 +244,12 @@ sub _finalize_response {
         $self->_client->{harakiri}  = 1;
     }
 
-    my $server_proto = $env->{SERVER_PROTOCOL};
-    my $client_proto = $req->protocol;
-    my $protocol     = $server_proto gt $client_proto ?
-        $client_proto : $server_proto;
+    # doesn't work? always 1.1?
+    #my $server_proto = $env->{SERVER_PROTOCOL};
+    #my $client_proto = $req->protocol;
+    #my $protocol     = $server_proto gt $client_proto ?
+    #    $client_proto : $server_proto;
+    my $protocol     = $env->{SERVER_PROTOCOL};
     my $status       = $res->[0];
     my $message      = status_message($status);
     $self->{_res_status} = $status;
