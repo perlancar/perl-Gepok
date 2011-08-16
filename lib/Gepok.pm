@@ -231,7 +231,8 @@ sub _main_loop {
     }
 }
 
-# copied from Starman::Server, with some modifications
+# taken from Starman, with modifications. turn PSGI response into actual HTTP
+# response and send it to client.
 sub _finalize_response {
     my($self, $env, $res, $sock) = @_;
 
@@ -248,50 +249,43 @@ sub _finalize_response {
     my $message  = status_message($status);
     $self->{_res_status} = $status;
 
+    # generate HTTP status + response headers
+
     my(@headers, %headers);
     push @headers, "$protocol $status $message";
     push @headers, "Server: ".
             $self->product_name."/".$self->product_version;
-
-    # Switch on Transfer-Encoding: chunked if we don't know Content-Length.
-    my $chunked;
     while (my ($k, $v) = splice @{$res->[1]}, 0, 2) {
         next if $k eq 'Connection';
         push @headers, "$k: $v";
         $headers{lc $k} = $v;
     }
 
+    my $chunked;
     if ($protocol eq 'HTTP/1.1') {
-        if (!exists $headers{'content-length'}) {
-            if ($status !~ /^1\d\d|[23]04$/) {
-                $log->debug("Using chunked transfer-encoding to send ".
-                                "unknown length body");
-                push @headers, 'Transfer-Encoding: chunked';
-                $chunked = 1;
-            }
-        } elsif (my $te = $headers{'transfer-encoding'}) {
+        $chunked = 1;
+        $self->_client->{keepalive} //= 1;
+        if (my $te = $headers{'transfer-encoding'}) {
             if ($te eq 'chunked') {
-                $log->debug("Chunked transfer-encoding set for response");
+                #$log->trace("Chunked transfer-encoding set for response");
                 $chunked = 1;
             }
         }
-    } else {
-        if (!exists $headers{'content-length'}) {
-            $log->debug("Disabling keep-alive after sending unknown length ".
-                            "body on $protocol");
-            $self->_client->{keepalive} = 0;
-        }
-    }
+    };
+    push @headers, "Transfer-Encoding: chunked" if $chunked;
 
-    if (!$headers{date}) {
-        push @headers, "Date: " . time2str(time());
+    if (!exists $headers{'content-length'}) {
+        #$log->trace("Disabling keep-alive after sending unknown length ".
+        #                "body on $protocol");
+        $self->_client->{keepalive} = 0;
     }
-
-    # Should we keep the connection open?
-    if ( $self->_client->{keepalive}) {
+    if ($self->_client->{keepalive}) {
         push @headers, 'Connection: keep-alive';
     } else {
         push @headers, 'Connection: close';
+    }
+    if (!$headers{date}) {
+        push @headers, "Date: " . time2str(time());
     }
 
     # Buffer the headers so they are sent with the first write() call
@@ -322,11 +316,12 @@ sub _finalize_response {
                 $body_size += $len;
                 if ($chunked) {
                     return unless $len;
-                    $buffer = sprintf( "%x", $len ) . $CRLF . $buffer . $CRLF;
+                    $buffer = sprintf("%x", $len) . $CRLF . $buffer . $CRLF;
                 }
                 syswrite $sock, $buffer;
-                $log->debug("Wrote " . length($buffer) . " bytes");
+                #$log->trace("Wrote " . length($buffer) . " bytes");
             },
+            # poll_cb => sub { ... },
             close => sub {
                 syswrite $sock, "0$CRLF$CRLF" if $chunked;
             }
@@ -335,19 +330,21 @@ sub _finalize_response {
     $self->{_res_body_size} = $body_size;
 }
 
-# run PSGI app, send PSGI response to client, and return it
+# run PSGI app, send PSGI response to client as HTTP response, and return it
 sub _handle_psgi {
     my ($self, $req, $sock) = @_;
 
     my $env = $self->_prepare_env($req, $sock);
     my $res = Plack::Util::run_app($self->_app, $env);
+
+    # trap i/o error when sending response
     eval {
-        if (ref $res eq 'CODE') {
+        if (ref($res) eq 'CODE') {
             $res->(sub { $self->_finalize_response($env, $_[0], $sock) });
         } else {
             $self->_finalize_response($env, $res, $sock);
         }
-    }; # trap i/o error when sending response
+    };
 
     $res;
 }
@@ -481,7 +478,6 @@ sub access_log {
     }
 }
 
-1;
 # ABSTRACT: PSGI server with built-in HTTPS support, Unix sockets, preforking
 __END__
 
