@@ -40,6 +40,7 @@ has access_log_path        => (is => 'rw');
 has http_ports             => (is => 'rw', default => sub{[]});
 has https_ports            => (is => 'rw', default => sub{[]});
 has unix_sockets           => (is => 'rw', default => sub{[]});
+has timeout                => (is => 'rw', default => sub{120});
 has require_root           => (is => 'rw', default => sub{0});
 has ssl_key_file           => (is => 'rw');
 has ssl_cert_file          => (is => 'rw');
@@ -135,8 +136,12 @@ sub _after_init {
     $ary = $self->unix_sockets;
     if (defined($ary) && ref($ary) ne 'ARRAY') { $ary = [split /\s*,\s*/,$ary] }
     for my $path (@$ary) {
+        my %args;
+        $args{Reuse}   = 1;
+        $args{Timeout} = $self->timeout;
+        $args{Local}   = $path;
         $log->infof("Binding to Unix socket %s (http) ...", $path);
-        my $sock = HTTP::Daemon::UNIX->new(Local=>$path);
+        my $sock = HTTP::Daemon::UNIX->new(%args);
         die "Unable to bind to Unix socket $path" unless $sock;
         push @server_socks, $sock;
         push @server_sock_infos, "$path (unix)";
@@ -145,7 +150,9 @@ sub _after_init {
     $ary = $self->http_ports;
     if (defined($ary) && ref($ary) ne 'ARRAY') { $ary = [split /\s*,\s*/,$ary] }
     for my $port (@$ary) {
-        my %args = (Reuse => 1);
+        my %args;
+        $args{Reuse}   = 1;
+        $args{Timeout} = $self->timeout;
         if ($port =~ /^(?:0\.0\.0\.0)?:?(\d+)$/) {
             $args{LocalPort} = $1;
         } elsif ($port =~ /^(\d+\.\d+\.\d+\.\d+):(\d+)$/) {
@@ -165,9 +172,9 @@ sub _after_init {
     $ary = $self->https_ports;
     if (defined($ary) && ref($ary) ne 'ARRAY') { $ary = [split /\s*,\s*/,$ary] }
     for my $port (@$ary) {
-        my %args = (Reuse => 1);
-        # currently commented out, hangs with larger POST
-        #$args{Timeout} = 180;
+        my %args;
+        $args{Reuse}   = 1;
+        $args{Timeout} = $self->timeout; # can hang with larger POST?
 
         $args{SSL_key_file}  = $self->ssl_key_file;
         $args{SSL_cert_file} = $self->ssl_cert_file;
@@ -220,11 +227,14 @@ sub _main_loop {
                 num_reqs => $i,
                 state => "R",
             });
-            while (my $req = $sock->get_request) {
-                $self->{_finish_req_time} = [gettimeofday];
-                $self->_daemon->update_scoreboard({state => "W"});
-                my $res = $self->_handle_psgi($req, $sock);
-                $self->access_log($req, $res, $sock);
+            # sock can be undef if client timed out
+            if ($sock) {
+                while (my $req = $sock->get_request) {
+                    $self->{_finish_req_time} = [gettimeofday];
+                    $self->_daemon->update_scoreboard({state => "W"});
+                    my $res = $self->_handle_psgi($req, $sock);
+                    $self->access_log($req, $res, $sock);
+                }
             }
             $self->_daemon->update_scoreboard({state => "_"});
         }
@@ -244,12 +254,8 @@ sub _finalize_response {
         $self->_client->{harakiri}  = 1;
     }
 
-    # doesn't work? always 1.1?
-    #my $server_proto = $env->{SERVER_PROTOCOL};
-    #my $client_proto = $req->protocol;
-    #my $protocol     = $server_proto gt $client_proto ?
-    #    $client_proto : $server_proto;
-    my $protocol     = $env->{SERVER_PROTOCOL};
+    my $server_proto = $env->{SERVER_PROTOCOL};
+    my $client_proto = "HTTP/1.1"; #$sock->proto_ge('1.1') ? "HTTP/1.1" : "HTTP/1.0";
     my $status       = $res->[0];
     my $message      = status_message($status);
     $self->{_res_status} = $status;
@@ -257,20 +263,29 @@ sub _finalize_response {
     # generate HTTP status + response headers
 
     my(@headers, %headers);
-    push @headers, "$protocol $status $message";
+    push @headers, "$server_proto $status $message";
     push @headers, "Server: ".
             $self->product_name."/".$self->product_version;
     while (my ($k, $v) = splice @{$res->[1]}, 0, 2) {
-        next if $k eq 'Connection';
+        if ($k =~ /^connection$/i) {
+            if ($v =~ /alive/) {
+                $self->_client->{keepalive} = 1;
+            } else {
+                $self->_client->{keepalive} = 0;
+            }
+            next;
+        }
         push @headers, "$k: $v";
         $headers{lc $k} = $v;
     }
 
     my $chunked;
-    if ($protocol eq 'HTTP/1.1') {
-        $chunked = 1 if $status =~ /^[123]/;
-        # disable for now, can't detect client protocol
-        #$self->_client->{keepalive} //= 1;
+    if ($client_proto eq 'HTTP/1.1') {
+        $self->_client->{keepalive} //= 1;
+        my $cl = $headers{'content-length'};
+        if ($status =~ /^[123]/ && (!defined($cl) || $cl)) {
+            $chunked = 1;
+        }
         if (my $te = $headers{'transfer-encoding'}) {
             if ($te eq 'chunked') {
                 #$log->trace("Chunked transfer-encoding set for response");
@@ -278,18 +293,11 @@ sub _finalize_response {
             }
         }
     };
+    warn "cproto=$client_proto, ka=".$self->_client->{keepalive};
+    push @headers, "Connection: ".($self->_client->{keepalive} ?
+                                       "keep-alive" : "close");
     push @headers, "Transfer-Encoding: chunked" if $chunked;
 
-    if (!exists $headers{'content-length'}) {
-        #$log->trace("Disabling keep-alive after sending unknown length ".
-        #                "body on $protocol");
-        $self->_client->{keepalive} = 0;
-    }
-    if ($self->_client->{keepalive}) {
-        push @headers, 'Connection: keep-alive';
-    } else {
-        push @headers, 'Connection: close';
-    }
     if (!$headers{date}) {
         push @headers, "Date: " . time2str(time());
     }
@@ -418,8 +426,10 @@ sub _prepare_env {
 
 sub _set_label_serving {
     my ($self, $sock) = @_;
+    # sock can be undef when client timed out
+    return unless $sock;
 
-    my $is_unix = $sock && $sock->isa('HTTP::Daemon::UNIX');
+    my $is_unix = $sock->isa('HTTP::Daemon::UNIX');
 
     if ($is_unix) {
         my $sock_path = $sock->hostpath;
