@@ -49,7 +49,6 @@ has max_requests_per_child => (is => 'rw', default=>sub{1000});
 has _daemon                => (is => 'rw'); # SHARYANTO::Proc::Daemon::Prefork
 has _server_socks          => (is => 'rw'); # store server sockets
 has _app                   => (is => 'rw'); # store PSGI app
-has _client                => (is => 'rw'); # store client data
 has product_name           => (is => 'rw');
 has product_version        => (is => 'rw');
 
@@ -220,6 +219,8 @@ sub _main_loop {
         my @ready = $sel->can_read();
         for my $s (@ready) {
             my $sock = $s->accept();
+            # sock can be undef
+            next unless $sock;
             $self->{_connect_time} = [gettimeofday];
             $self->_set_label_serving($sock);
             $self->_daemon->update_scoreboard({
@@ -227,14 +228,13 @@ sub _main_loop {
                 num_reqs => $i,
                 state => "R",
             });
-            # sock can be undef if client timed out
-            if ($sock) {
-                while (my $req = $sock->get_request) {
-                    $self->{_finish_req_time} = [gettimeofday];
-                    $self->_daemon->update_scoreboard({state => "W"});
-                    my $res = $self->_handle_psgi($req, $sock);
-                    $self->access_log($req, $res, $sock);
-                }
+            while (my $req = $sock->get_request) {
+                $self->{_client_proto} =
+                    $sock->proto_ge("1.1") ? "HTTP/1.1" : "HTTP/1.0";
+                $self->{_finish_req_time} = [gettimeofday];
+                $self->_daemon->update_scoreboard({state => "W"});
+                my $res = $self->_handle_psgi($req, $sock);
+                $self->access_log($req, $res, $sock);
             }
             $self->_daemon->update_scoreboard({state => "_"});
         }
@@ -248,14 +248,13 @@ sub _finalize_response {
 
     $self->{_sock_peerhost} = $sock->peerhost; # cache first before close
 
-    $self->_client({});
     if ($env->{'psgix.harakiri.commit'}) {
-        $self->_client->{keepalive} = 0;
-        $self->_client->{harakiri}  = 1;
+        $self->{_client_keepalive} = 0;
+        $self->{_client_harakiri}  = 1;
     }
 
     my $server_proto = $env->{SERVER_PROTOCOL};
-    my $client_proto = "HTTP/1.1"; #$sock->proto_ge('1.1') ? "HTTP/1.1" : "HTTP/1.0";
+    my $client_proto = $self->{_client_proto};
     my $status       = $res->[0];
     my $message      = status_message($status);
     $self->{_res_status} = $status;
@@ -267,81 +266,108 @@ sub _finalize_response {
     push @headers, "Server: ".
             $self->product_name."/".$self->product_version;
     while (my ($k, $v) = splice @{$res->[1]}, 0, 2) {
-        if ($k =~ /^connection$/i) {
-            if ($v =~ /alive/) {
-                $self->_client->{keepalive} = 1;
-            } else {
-                $self->_client->{keepalive} = 0;
-            }
-            next;
-        }
         push @headers, "$k: $v";
         $headers{lc $k} = $v;
     }
-
-    my $chunked;
-    if ($client_proto eq 'HTTP/1.1') {
-        $self->_client->{keepalive} //= 1;
-        my $cl = $headers{'content-length'};
-        if ($status =~ /^[123]/ && (!defined($cl) || $cl)) {
-            $chunked = 1;
-        }
-        if (my $te = $headers{'transfer-encoding'}) {
-            if ($te eq 'chunked') {
-                #$log->trace("Chunked transfer-encoding set for response");
-                $chunked = 1;
-            }
-        }
-    };
-    warn "cproto=$client_proto, ka=".$self->_client->{keepalive};
-    push @headers, "Connection: ".($self->_client->{keepalive} ?
-                                       "keep-alive" : "close");
-    push @headers, "Transfer-Encoding: chunked" if $chunked;
 
     if (!$headers{date}) {
         push @headers, "Date: " . time2str(time());
     }
 
-    # Buffer the headers so they are sent with the first write() call
-    # This reduces the number of TCP packets we are sending
-    syswrite $sock, join($CRLF, @headers, '') . $CRLF;
+    my $keepalive;
+    if ($env->{HTTP_CONNECTION}) {
+        $keepalive = $env->{HTTP_CONNECTION} =~ /alive/i ? 1:0;
+    }
+    # default is keep-alive for HTTP/1.1, but close for HTTP/1.0
+    $keepalive //= ($client_proto eq 'HTTP/1.1' ? 1:0);
+    # normally HTTP::Daemon prints this, but we're not sending response using
+    # HTTP::Daemon
+    push @headers, "Connection: ".($keepalive ? "Keep-Alive" : "Close");
 
-    my $body_size = 0;
+    my $chunked;
+    my $cl = $headers{'content-length'};
+    if ($client_proto eq 'HTTP/1.1') {
+        if ($status =~ /^[123]/ && (!defined($cl) || $cl)) {
+            $chunked = 1;
+        }
+        if (my $te = $headers{'transfer-encoding'}) {
+            $chunked = $te eq 'chunked';
+        }
+    } else {
+        # "A server MUST NOT send transfer-codings to an HTTP/1.0 client."
+        $chunked = 0;
+    }
+    push @headers, "Transfer-Encoding: chunked" if $chunked;
+    $self->{_chunked} = $chunked;
+
+    #warn "chunked=$chunked, keep-alive=$keepalive, client_proto=$client_proto";
+
+    if ($client_proto le 'HTTP/1.0' && $keepalive && !defined($cl)) {
+        # if HTTP/1.0 client requests keep-alive (like Wget), we need Content-Length
+        # so client knows when response ends.
+
+        # produce body first so we can calculate content-length
+        $self->_finalize_body($env, $res, $sock, 1);
+        push @headers, "Content-Length: ".$self->{_res_content_length};
+        syswrite $sock, join($CRLF, @headers, '') . $CRLF; # print header
+        syswrite $sock, $_ for @{$self->{_body}}; # print body
+    } else {
+        # print headers + body normally
+
+        syswrite $sock, join($CRLF, @headers, '') . $CRLF; # print header
+        $self->_finalize_body($env, $res, $sock);
+    }
+}
+
+# either print body to $sock, or store it in $self-> (for HTTP/1.0 Keep-Alive
+# clients)
+sub _finalize_body {
+    my ($self, $env, $res, $sock, $save) = @_;
+    my $cl = 0;
+    $self->{_body} = [] if $save;
     if (defined $res->[2]) {
         Plack::Util::foreach(
             $res->[2],
             sub {
                 my $buffer = $_[0];
                 my $len = length $buffer;
-                $body_size += $len;
-                if ($chunked) {
+                $cl += $len;
+                if ($self->{_chunked}) {
                     return unless $len;
                     $buffer = sprintf("%x", $len) . $CRLF . $buffer . $CRLF;
                 }
-                syswrite $sock, $buffer;
-                #$log->debug("Wrote " . length($buffer) . " bytes");
+                $self->_write_sock($sock, $save, $buffer);
             });
-        syswrite $sock, "0$CRLF$CRLF" if $chunked;
+        $self->_write_sock($sock, $save, "0$CRLF$CRLF") if $self->{_chunked};
     } else {
         return Plack::Util::inline_object(
             write => sub {
                 my $buffer = $_[0];
                 my $len = length $buffer;
-                $body_size += $len;
-                if ($chunked) {
+                $cl += $len;
+                if ($self->{_chunked}) {
                     return unless $len;
                     $buffer = sprintf("%x", $len) . $CRLF . $buffer . $CRLF;
                 }
-                syswrite $sock, $buffer;
-                #$log->trace("Wrote " . length($buffer) . " bytes");
+                $self->_write_sock($sock, $save, $buffer);
             },
             # poll_cb => sub { ... },
             close => sub {
-                syswrite $sock, "0$CRLF$CRLF" if $chunked;
+                $self->_write_sock($sock, $save, "0$CRLF$CRLF")
+                    if $self->{_chunked};
             }
         );
     }
-    $self->{_res_body_size} = $body_size;
+    $self->{_res_content_length} = $cl;
+}
+
+sub _write_sock {
+    my ($self, $sock, $save, $buffer) = @_;
+    if ($save) {
+        push @{$self->{_body}}, $buffer;
+    } else {
+        syswrite $sock, $buffer;
+    }
 }
 
 # run PSGI app, send PSGI response to client as HTTP response, and return it
@@ -410,6 +436,7 @@ sub _prepare_env {
         'gepok'                     => 1,
         'gepok.connect_time'        => $self->{_connect_time},
         'gepok.finish_request_time' => $self->{_finish_req_time},
+        'gepok.client_protocol'     => $self->{_client_proto},
     };
     $env->{HTTPS} = 'on' if $is_ssl;
 
@@ -482,7 +509,7 @@ sub access_log {
         $req->method,
         __escape_quote($req->uri->as_string),
         $self->{_res_status},
-        $self->{_res_body_size} // "-",
+        $self->{_res_content_length} // "-",
         scalar($reqh->header("referer")) // "-",
         scalar($reqh->header("user-agent")) // "-",
     );
