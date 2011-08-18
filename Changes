@@ -1,5 +1,14 @@
 Revision history for Gepok
 
+0.11    2011-08-18
+
+        - Some fixes to chunking response, keep-alive, etc.
+
+        - Add attribute: timeout.
+
+        - Provide 'gepok.client_protocol' in $env.
+
+
 0.10    2011-08-16
 
         - (internal) Minor refactoring on _finalize_response.
