@@ -629,6 +629,11 @@ A string is also accepted, it will be split (delimiter ,) beforehand.
 You must at least specify one port (either http, https, unix_socket) or Gepok
 will refuse to run.
 
+=head2 timeout => BOOL (default 120)
+
+Socket timeout. Will be passed as Timeout option to HTTP::Daemon's constructor
+(which will be passed to IO::Socket).
+
 =head2 require_root => BOOL (default 0)
 
 Whether to require running as root.
