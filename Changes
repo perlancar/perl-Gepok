@@ -1,5 +1,13 @@
 Revision history for Gepok
 
+0.13    2011-08-20
+
+        - Fix getting socket information (for process label), listening over
+          Unix socket now works.
+
+        - Provide 'gepok.socket', 'gepok.unix_socket' in $env.
+
+
 0.12    2011-08-19
 
         No functional changes. Re-upload to CPAN with the correct account.
