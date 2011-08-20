@@ -438,7 +438,7 @@ sub _prepare_env {
         'gepok.connect_time'        => $self->{_connect_time},
         'gepok.finish_request_time' => $self->{_finish_req_time},
         'gepok.client_protocol'     => $self->{_client_proto},
-        'gepok.socket'              => $httpd,
+        'gepok.socket'              => $sock,
     };
     $env->{HTTPS} = 'on' if $is_ssl;
     if ($is_unix) {
@@ -591,15 +591,33 @@ application/middleware:
 
 =over 4
 
-=item * gepok.connect_time
+=item * gepok.connect_time => ARRAY
 
 A 2-element arrayref (produced by Time::HiRes' gettimeofday()), clocked at
 connect time.
 
-=item * gepok.finish_request_time
+=item * gepok.finish_request_time => ARRAY
 
 A 2-element arrayref (produced by Time::HiRes' gettimeofday()), clocked right
 after Gepok has received the complete request from client.
+
+=item * gepok.client_protocol => STR
+
+HTTP protocol version sent by client, e.g. "HTTP/1.0" or "HTTP/1.1". This can be
+used to avoid sending HTTP/1.1 response to HTTP/1.0 or older clients.
+
+=item * gepok.socket => OBJ
+
+Raw HTTP::Daemon::ClientConn socket. Can be used to get information about
+socket, e.g. peerport(), peercred(), etc. Should not be used to read/write data
+(use PSGI way for that, e.g. $env->{'psgi.input'}, returning PSGI response,
+etc).
+
+=item * gepok.unix_socket => BOOL
+
+A boolean value which is set to true if client connects via Unix socket. (Note,
+you can get Unix socket path from $env->{SERVER_NAME} or
+$env->{'gepok.socket'}).
 
 =back
 
