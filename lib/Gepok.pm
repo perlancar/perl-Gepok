@@ -303,8 +303,8 @@ sub _finalize_response {
     #warn "chunked=$chunked, keep-alive=$keepalive, client_proto=$client_proto";
 
     if ($client_proto le 'HTTP/1.0' && $keepalive && !defined($cl)) {
-        # if HTTP/1.0 client requests keep-alive (like Wget), we need Content-Length
-        # so client knows when response ends.
+        # if HTTP/1.0 client requests keep-alive (like Wget), we need
+        # Content-Length so client knows when response ends.
 
         # produce body first so we can calculate content-length
         $self->_finalize_body($env, $res, $sock, 1);
