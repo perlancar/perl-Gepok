@@ -1,5 +1,10 @@
 Revision history for Gepok
 
+0.14    2011-08-20
+
+        - Fix logging time
+
+
 0.13    2011-08-20
 
         - Fix getting socket information (for process label), listening over
