@@ -513,7 +513,7 @@ sub access_log {
         $self->{_sock_peerhost},
         "-", # XXX auth user
         POSIX::strftime("%d/%b/%Y:%H:%M:%S +0000",
-                        gmtime($self->{_finish_req_time})),
+                        gmtime($self->{_finish_req_time}[0])),
         $req->method,
         __escape_quote($req->uri->as_string),
         $self->{_res_status},
