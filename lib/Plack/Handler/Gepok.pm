@@ -6,6 +6,8 @@ use warnings;
 
 use Gepok;
 
+# VERSION
+
 sub new {
     my $class = shift;
     my $self = bless { @_ }, $class;
