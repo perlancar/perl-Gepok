@@ -512,6 +512,19 @@ sub access_log {
     return unless $self->access_log_path;
 
     my $reqh = $req->headers;
+    if ($log->is_trace) {
+        $log->tracef("\$self->{sock_peerhost}=%s, (gmtime(\$self->{_finish_req_time}))[0]=%s, \$req->method=%s, \$req->uri->as_string=%s, \$self->{_res_status}=%s, \$self->{res_content_length}=%s, ".
+                         "\$reqh->header('referer')=%s, \$reqh->header('user-agent')=%s",
+                     $self->{_sock_peerhost},
+                     (gmtime($self->{_finish_req_time}))[0],
+                     $req->method,
+                     $req->uri->as_string,
+                     $self->{_res_status},
+                     $self->{_res_content_length},
+                     scalar($reqh->header("referer")),
+                     scalar($reqh->header("user-agent")),
+                 );
+    }
     my $logline = sprintf(
         "%s - %s [%s] \"%s %s\" %d %s \"%s\" \"%s\"\n",
         $self->{_sock_peerhost},
