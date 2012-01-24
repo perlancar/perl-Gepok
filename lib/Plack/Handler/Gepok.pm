@@ -29,16 +29,12 @@ sub run {
 }
 
 1;
-
-__END__
-
-=head1 NAME
-
-Plack::Handler::Gepok - Plack adapter for Gepok
+# ABSTRACT: Plack adapter for Gepok
 
 =head1 SYNOPSIS
 
   plackup -s Gepok
+
 
 =head1 SEE ALSO
 
