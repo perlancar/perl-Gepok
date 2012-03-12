@@ -1,5 +1,15 @@
 Revision history for Gepok
 
+0.17    2012-03-12
+
+        [FIXES]
+
+        - Fix hanging/connection terminated problem due to incomplete syswrite
+         of large buffers (we need to loop over large $buffer until all is
+         completely written). This problem is first seen with https/SSL, where
+         only up to 16k of buffer is written.
+
+
 0.16    2011-08-31
 
         - Provide 'gepok.start_request_time' in $env.
