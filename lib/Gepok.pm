@@ -369,7 +369,16 @@ sub _write_sock {
     if ($save) {
         push @{$self->{_body}}, $buffer;
     } else {
-        syswrite $sock, $buffer;
+        # large $buffer might need to be written in several steps, especially in
+        # SSL sockets which might have smaller buffer size (like 16k)
+        my $tot_written = 0;
+        while (1) {
+            my $written = syswrite $sock, $buffer, length($buffer)-$tot_written,
+                $tot_written;
+            # XXX what to do on error, i.e. $written is undef?
+            $tot_written += $written;
+            last unless $tot_written < length($buffer);
+        }
     }
 }
 
