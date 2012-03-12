@@ -75,7 +75,7 @@ sub BUILD {
     }
     unless (defined $self->product_version) {
         no strict;
-        $self->product_version($Gepok::VERSION // "0.0");
+        $self->product_version($Gepok::VERSION // "?");
     }
     unless ($self->_daemon) {
         my $daemon = SHARYANTO::Proc::Daemon::Prefork->new(
