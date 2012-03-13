@@ -823,8 +823,8 @@ remote API requests, in which HTTPS support is required.
 =head2 "Bad arg length for Socket::inet_ntoa, length is 16, should be 4" error
 
 At the time of this writing, L<HTTP::Daemon> (6.01) might throw this error
-message when receiving request. For a patch to overcome this problem, see:
-https://rt.cpan.org/Ticket/Display.html?id=71395
+message when receiving request. For patches/solutions to overcome this problem,
+see: https://rt.cpan.org/Ticket/Display.html?id=71395
 
 
 =head1 CREDITS
