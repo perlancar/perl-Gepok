@@ -9,6 +9,7 @@ use Log::Any '$log';
 
 use File::HomeDir;
 use HTTP::Daemon;
+use HTTP::Daemon::patch::ipv6;
 use HTTP::Daemon::SSL;
 use HTTP::Daemon::UNIX;
 use HTTP::Date qw(time2str);
