@@ -1,5 +1,10 @@
 Revision history for Gepok
 
+0.19    2012-04-03
+
+        Try out HTTP::Daemon::patch::ipv6.
+
+
 0.18    2012-03-13
 
         No functional changes. Add FAQ entry.
