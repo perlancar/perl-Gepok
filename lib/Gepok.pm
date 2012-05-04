@@ -187,7 +187,7 @@ sub _after_init {
 
         for (qw(verify_mode verify_callback ca_path ca_file)) {
             my $meth = "ssl_$_";
-            my $val  = $_->$meth;
+            my $val  = $self->$meth;
             $args{"SSL_$_"} = $val if defined $val;
         }
 
