@@ -52,6 +52,8 @@ has _app                   => (is => 'rw'); # store PSGI app
 has product_name           => (is => 'rw');
 has product_version        => (is => 'rw');
 
+has "ssl_$_" => (is => 'rw') for (qw(verify_mode verify_callback ca_path ca_file));
+
 sub BUILD {
     my ($self) = @_;
 
@@ -77,6 +79,11 @@ sub BUILD {
     unless (defined $self->product_version) {
         no strict;
         $self->product_version($Gepok::VERSION // "?");
+    }
+    if (defined (my $vc = $self->ssl_verify_callback)) {
+        $self->ssl_verify_callback($vc = sub { 0 }) if $vc eq '0';
+        $self->ssl_verify_callback($vc = sub { 1 }) if $vc eq '1';
+        die "ssl_verify_callback needs to be a coderef, or constant '1' or '0'" unless ref $vc eq 'CODE';
     }
     unless ($self->_daemon) {
         my $daemon = SHARYANTO::Proc::Daemon::Prefork->new(
@@ -177,8 +184,13 @@ sub _after_init {
 
         $args{SSL_key_file}  = $self->ssl_key_file;
         $args{SSL_cert_file} = $self->ssl_cert_file;
-        #$args{SSL_ca_file} = $self->ssl_ca_file;
-        #$args{SSL_verify_mode} => 0x01;
+
+        for (qw(verify_mode verify_callback ca_path ca_file)) {
+            my $meth = "ssl_$_";
+            my $val  = $_->$meth;
+            $args{"SSL_$_"} = $val if defined $val;
+        }
+
         if ($port =~ /^(?:0\.0\.0\.0)?:?(\d+)$/) {
             $args{LocalPort} = $1;
         } elsif ($port =~ /^(\d+\.\d+\.\d+\.\d+):(\d+)$/) {
@@ -554,6 +566,8 @@ sub access_log {
         warn $logline;
     }
 }
+
+1;
 
 # ABSTRACT: PSGI server with built-in HTTPS support, Unix sockets, preforking
 __END__
