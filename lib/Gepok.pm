@@ -741,6 +741,26 @@ more HTTPS ports, you need to supply this.
 Path to SSL cert file, to be passed to HTTP::Daemon::SSL. If you specify one or
 more HTTPS ports, you need to supply this.
 
+=head2 ssl_verify_mode => INT
+
+Level of verification for SSL client certificates, to be passed to
+HTTP::Daemon::SSL. This is optional.
+
+=head2 ssl_verify_callback => CODEREF
+
+Custom verifier for SSL client certificates, to be passed to HTTP::Daemon::SSL.
+This is optional.
+
+=head2 ssl_ca_file => STR
+
+Path for file containing certificates of reputable authorties for certificate
+verification. This is optional.
+
+=head2 ssl_ca_path => STR
+
+According to L<IO::Socket::SSL> this is only of interest if you are
+"unusually friendly with the OpenSSL documentation". This is optional.
+
 =head2 start_servers => INT (default 3)
 
 Number of children to fork at the start of run. If you set this to 0, the server
