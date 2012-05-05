@@ -91,7 +91,7 @@ else
 		ssl_cert_file       => 't/certs/server-crt.pem',
 		ssl_verify_mode     => 0x01,
 		ssl_verify_callback => '1',
-		ssl_ca_path         => '/etc/pki/tls/rootcerts/',
+		ssl_ca_path         => 't/certs/ca/',
 		daemonize           => 0,
 	);
 	$daemon->run($app);
