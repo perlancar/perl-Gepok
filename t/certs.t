@@ -19,8 +19,10 @@ use Net::SSLeay;
 my $port = int(rand(30_000) + 2048);
 my $cert_file = 't/certs/client-crt.pem';
 my $key_file  = 't/certs/client-key-nopass.pem';
+my $tests = 1;
+my $requests = $tests;
 
-plan tests => 1;
+plan tests => $tests;
 
 # Performs HTTPS GET request. I wasn't able to pursuade LWP::UserAgent
 # to reliably use X509 certificates.
@@ -99,6 +101,8 @@ if (my $child = fork) {
         ssl_verify_callback => '1',
         ssl_ca_path         => 't/certs/ca/',
         daemonize           => 0,
+        start_servers       => 0,
+        max_requests_per_child => $requests,
     );
     $daemon->run($app);
 }
