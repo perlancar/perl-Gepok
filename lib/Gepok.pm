@@ -143,7 +143,6 @@ sub _after_init {
     if (defined($ary) && ref($ary) ne 'ARRAY') { $ary = [split /\s*,\s*/,$ary] }
     for my $path (@$ary) {
         my %args;
-        $args{Reuse}   = 1;
         $args{Timeout} = $self->timeout;
         $args{Local}   = $path;
         $log->infof("Binding to Unix socket %s (http) ...", $path);
