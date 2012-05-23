@@ -17,15 +17,19 @@ use Net::SSLeay;
     "are you running this from the right place?\n";
 
 my $port = int(rand(30_000) + 2048);
-$ENV{HTTPS_CERT_FILE} = 't/certs/client-crt.pem';
-$ENV{HTTPS_KEY_FILE}  = 't/certs/client-key-nopass.pem';
+my $cert_file = 't/certs/client-crt.pem';
+my $key_file  = 't/certs/client-key-nopass.pem';
 
 plan tests => 1;
 
 # Performs HTTPS GET request. I wasn't able to pursuade LWP::UserAgent
 # to reliably use X509 certificates.
 sub get {
-    my $path = shift;
+    my ($path, $use_cert) = @_;
+
+    local $ENV{HTTPS_CERT_FILE} = $cert_file if $use_cert;
+    local $ENV{HTTPS_KEY_FILE}  = $key_file  if $use_cert;
+
     my $sock = Net::SSL->new(
         PeerAddr => '127.0.0.1',
         PeerPort => $port,
@@ -65,8 +69,12 @@ sub parsed {
 
 if (my $child = fork) {
     sleep 1;
-    my $got_cert      = get('/test');
-    my $expected_cert = do { local(@ARGV, $/) = $ENV{HTTPS_CERT_FILE}; <> };
+
+    # test that ssl_verify_mode 0x02 is indeed enforced. disabled for now.
+    # my $res = get('/test', 0);
+
+    my $got_cert      = get('/test', 1);
+    my $expected_cert = do { local(@ARGV, $/) = $cert_file; <> };
 
     is(parsed($got_cert), parsed($expected_cert));
 } else {
@@ -86,6 +94,7 @@ if (my $child = fork) {
         https_ports         => [$port],
         ssl_key_file        => 't/certs/server-key-nopass.pem',
         ssl_cert_file       => 't/certs/server-crt.pem',
+        #ssl_verify_mode     => 0x01 | 0x02, # force verification
         ssl_verify_mode     => 0x01,
         ssl_verify_callback => '1',
         ssl_ca_path         => 't/certs/ca/',
