@@ -148,7 +148,7 @@ sub _after_init {
         $args{Local}   = $path;
         $log->infof("Binding to Unix socket %s (http) ...", $path);
         my $sock = HTTP::Daemon::UNIX->new(%args);
-        die "Unable to bind to Unix socket $path" unless $sock;
+        die "Unable to bind to Unix socket $path: $@" unless $sock;
         push @server_socks, $sock;
         push @server_sock_infos, "$path (unix)";
     }
