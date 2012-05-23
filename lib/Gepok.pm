@@ -226,7 +226,7 @@ sub _main_loop {
 
     my $sel = IO::Select->new(@{ $self->_server_socks });
 
-    for (my $i=1; $i<$self->max_requests_per_child; $i++) {
+    for (my $i=1; $i<=$self->max_requests_per_child; $i++) {
         $self->_daemon->set_label("listening");
         my @ready = $sel->can_read();
         for my $s (@ready) {
