@@ -1,5 +1,13 @@
 Revision history for Gepok
 
+0.20    2012-05-03
+
+        [ENHANCEMENTS]
+
+        - Client certificate support (implemented by Toby Inkster). New
+          attributes ssl_{verify_mode,verify_callback,ca_file,ca_path}.
+
+
 0.19    2012-04-03
 
         Try out HTTP::Daemon::patch::ipv6.
