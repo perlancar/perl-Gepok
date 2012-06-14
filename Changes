@@ -1,6 +1,6 @@
 Revision history for Gepok
 
-0.20    2012-05-03
+0.20    2012-05-03 (SHARYANTO)
 
         [ENHANCEMENTS]
 
@@ -8,17 +8,17 @@ Revision history for Gepok
           attributes ssl_{verify_mode,verify_callback,ca_file,ca_path}.
 
 
-0.19    2012-04-03
+0.19    2012-04-03 (SHARYANTO)
 
         Try out HTTP::Daemon::patch::ipv6.
 
 
-0.18    2012-03-13
+0.18    2012-03-13 (SHARYANTO)
 
         No functional changes. Add FAQ entry.
 
 
-0.17    2012-03-12
+0.17    2012-03-12 (SHARYANTO)
 
         [FIXES]
 
@@ -28,22 +28,22 @@ Revision history for Gepok
          only up to 16k of buffer is written.
 
 
-0.16    2011-08-31
+0.16    2011-08-31 (SHARYANTO)
 
         - Provide 'gepok.start_request_time' in $env.
 
 
-0.15    2011-08-20
+0.15    2011-08-20 (SHARYANTO)
 
         - Fix setting REMOTE_ADDR
 
 
-0.14    2011-08-20
+0.14    2011-08-20 (SHARYANTO)
 
         - Fix logging time
 
 
-0.13    2011-08-20
+0.13    2011-08-20 (SHARYANTO)
 
         - Fix getting socket information (for process label), listening over
           Unix socket now works.
@@ -51,12 +51,12 @@ Revision history for Gepok
         - Provide 'gepok.socket', 'gepok.unix_socket' in $env.
 
 
-0.12    2011-08-19
+0.12    2011-08-19 (SHARYANTO)
 
         No functional changes. Re-upload to CPAN with the correct account.
 
 
-0.11    2011-08-18
+0.11    2011-08-18 (SHARYANTO)
 
         - Some fixes to chunking response, keep-alive, etc.
 
@@ -65,19 +65,19 @@ Revision history for Gepok
         - Provide 'gepok.client_protocol' in $env.
 
 
-0.10    2011-08-16
+0.10    2011-08-16 (SHARYANTO)
 
         - (internal) Minor refactoring on _finalize_response.
 
         - Provide 'gepok' and 'HTTPS' in $env.
 
 
-0.09    2011-08-09
+0.09    2011-08-09 (SHARYANTO)
 
         - Provide gepok.{connect_time,finish_request_time} in $env.
 
 
-0.08    2011-08-09
+0.08    2011-08-09 (SHARYANTO)
 
         No functional changes.
 
@@ -85,17 +85,17 @@ Revision history for Gepok
           anyway [thanks mst]
 
 
-0.07    2011-08-05
+0.07    2011-08-05 (SHARYANTO)
 
         No functional changes. Polish POD.
 
 
-0.06    2011-08-05
+0.06    2011-08-05 (SHARYANTO)
 
         No functional changes. Polish POD.
 
 
-0.05    2011-08-05
+0.05    2011-08-05 (SHARYANTO)
 
         - Work better with plackup: accept string (comma-separator) http_ports,
           https_ports, unix_sockets so they can be specified as command-line
@@ -105,14 +105,14 @@ Revision history for Gepok
         - Fix access log format: 31/Aug/2011, not 31/08/2011.
 
 
-0.04    2011-07-21
+0.04    2011-07-21 (SHARYANTO)
 
         [FIXES]
 
         - Various fixes, now passes Plack server test suite.
 
 
-0.03    2011-07-21
+0.03    2011-07-21 (SHARYANTO)
 
         [INCOMPATIBLE CHANGES]
 
@@ -133,7 +133,7 @@ Revision history for Gepok
         - Keep-Alive disabled for now.
 
 
-0.02    2011-07-18
+0.02    2011-07-18 (SHARYANTO)
 
         [ENHANCEMENTS]
 
@@ -151,6 +151,6 @@ Revision history for Gepok
         - Some documentation fixes/revising.
 
 
-0.01    2011-07-15
+0.01    2011-07-15 (SHARYANTO)
 
         First release.
