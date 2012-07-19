@@ -236,12 +236,12 @@ sub _main_loop {
             next unless $sock;
             $self->{_connect_time} = [gettimeofday];
             $self->_set_label_serving($sock);
-            $self->_daemon->update_scoreboard({
-                req_start_time => time(),
-                num_reqs => $i,
-                state => "R",
-            });
             while (1) {
+                $self->_daemon->update_scoreboard({
+                    req_start_time => time(),
+                    num_reqs => $i,
+                    state => "R",
+                });
                 $self->{_start_req_time} = [gettimeofday];
                 my $req = $sock->get_request;
                 $self->{_finish_req_time} = [gettimeofday];
