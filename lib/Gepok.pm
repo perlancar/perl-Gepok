@@ -222,7 +222,11 @@ sub before_prefork {}
 
 sub _main_loop {
     my ($self) = @_;
-    $log->info("Child process started (PID $$)");
+    if ($self->_daemon->{parent_pid} == $$) {
+        $log->info("Entering main loop");
+    } else {
+        $log->info("Child process started (PID $$)");
+    }
     $self->_daemon->update_scoreboard({child_start_time=>time()});
 
     my $sel = IO::Select->new(@{ $self->_server_socks });
