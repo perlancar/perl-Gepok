@@ -45,6 +45,7 @@ has require_root           => (is => 'rw', default => sub{0});
 has ssl_key_file           => (is => 'rw');
 has ssl_cert_file          => (is => 'rw');
 has start_servers          => (is => 'rw', default => sub{3});
+has max_clients            => (is => 'rw', default=>sub{150});
 has max_requests_per_child => (is => 'rw', default=>sub{1000});
 has _daemon                => (is => 'rw'); # SHARYANTO::Proc::Daemon::Prefork
 has _server_socks          => (is => 'rw'); # store server sockets
@@ -94,6 +95,7 @@ sub BUILD {
             scoreboard_path         => $self->scoreboard_path,
             daemonize               => $self->daemonize,
             prefork                 => $self->start_servers,
+            max_children            => $self->max_clients,
             after_init              => sub { $self->_after_init },
             main_loop               => sub { $self->_main_loop },
             require_root            => $self->require_root,
