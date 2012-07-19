@@ -1,5 +1,16 @@
 Revision history for Gepok
 
+0.21    2012-07-19 (SHARYANTO)
+
+        [BUG FIXES]
+
+        - max_clients was not passed to SHARYANTO::Proc::Daemon::Prefork
+
+        - localhost:N was not accepted in http_ports/https_ports
+
+        - Setting scoreboard status "R" should be done before each HTTP request.
+
+
 0.20    2012-05-03 (SHARYANTO)
 
         [ENHANCEMENTS]
