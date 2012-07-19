@@ -160,9 +160,9 @@ sub _after_init {
         my %args;
         $args{Reuse}   = 1;
         $args{Timeout} = $self->timeout;
-        if ($port =~ /^(?:0\.0\.0\.0)?:?(\d+)$/) {
+        if ($port =~ /^(?:0\.0\.0\.0|\*)?:?(\d+)$/) {
             $args{LocalPort} = $1;
-        } elsif ($port =~ /^(\d+\.\d+\.\d+\.\d+):(\d+)$/) {
+        } elsif ($port =~ /^([^:]+):(\d+)$/) {
             $args{LocalHost} = $1;
             $args{LocalPort} = $2;
         } else {
