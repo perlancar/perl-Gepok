@@ -554,17 +554,18 @@ sub access_log {
     }
     my $logline = sprintf(
         "%s - %s [%s] \"%s %s\" %d %s \"%s\" \"%s\"\n",
-        $self->{_sock_peerhost},
+        $self->{_sock_peerhost} // "-",
         "-", # XXX auth user
         POSIX::strftime("%d/%b/%Y:%H:%M:%S +0000",
                         gmtime($self->{_finish_req_time}[0])),
         $req->method,
         __escape_quote($req->uri->as_string),
-        $self->{_res_status},
+        $self->{_res_status} // 0,
         $self->{_res_content_length} // "-",
         scalar($reqh->header("referer")) // "-",
         scalar($reqh->header("user-agent")) // "-",
     );
+    #$log->tracef("logline=%s", $logline);
     if ($self->daemonize) {
         syswrite($self->_daemon->{_access_log}, $logline);
     } elsif (!defined($ENV{PLACK_ENV})) {
