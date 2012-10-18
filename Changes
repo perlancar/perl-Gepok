@@ -1,5 +1,14 @@
 Revision history for Gepok
 
+0.23    2012-10-17 (SHARYANTO)
+
+        No functional changes.
+
+        [BUG FIXES]
+
+        - Build: update patch module name.
+
+
 0.22    2012-08-03 (SHARYANTO)
 
         No functional changes. Avoid Perl undef warning (fatal under strictures)
