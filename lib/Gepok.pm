@@ -8,7 +8,6 @@ use Log::Any '$log';
 # VERSION
 
 use File::HomeDir;
-use HTTP::Daemon;
 use HTTP::Daemon::Patch::IPv6;
 use HTTP::Daemon::SSL;
 use HTTP::Daemon::UNIX;
