@@ -31,6 +31,8 @@ sub run {
 1;
 # ABSTRACT: Plack adapter for Gepok
 
+=for Pod::Coverage ^(new|run)$
+
 =head1 SYNOPSIS
 
   plackup -s Gepok

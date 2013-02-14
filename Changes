@@ -1,5 +1,10 @@
 Revision history for Gepok
 
+0.24    2013-02-14 (SHARYANTO)
+
+        No functional changes. Avoid Module::Patch warning.
+
+
 0.23    2012-10-17 (SHARYANTO)
 
         No functional changes.

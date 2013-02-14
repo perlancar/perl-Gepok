@@ -31,7 +31,7 @@ has name                   => (is => 'rw',
                                    $name;
                                });
 has daemonize              => (is => 'rw', default=>sub{1});
-has sock_path              => (is => 'rw');
+#has sock_path              => (is => 'rw');
 has pid_path               => (is => 'rw');
 has scoreboard_path        => (is => 'rw');
 has error_log_path         => (is => 'rw');
