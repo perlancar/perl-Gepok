@@ -846,12 +846,18 @@ several HTTP::Daemon::* objects to create a stand-alone web server.
 
 The main feature for Gepok is builtin HTTPS support, which means you do not have
 to setup a separate front-end HTTPS proxy for serving content over HTTPS. This
-is convenient/simpler, e.g. to check client certificates you can use the
+is convenient, especially for development. Builtin HTTPS support also makes some
+things easier to, e.g. check client certificates you can use the
 B<ssl_verify_callback> options. Your PSGI application also has direct access to
 the raw socket (C<< $env->{'gepok.socket'} >>).
 
 However, for heavy traffic use, you might want to check out more battle-tested
 solution like L<Perlbal>.
+
+There are now other PSGI servers that support HTTPS, see the SEE ALSO section.
+
+I personally developed Gepok for two reasons: HTTPS support and listening on
+Unix sockets.
 
 =head2 Performance notes?
 
@@ -890,11 +896,21 @@ L<PSGI> and L<Plack>.
 HTTP server classes used: L<HTTP::Daemon>, L<HTTP::Daemon::SSL>,
 L<HTTP::Daemon::UNIX>.
 
-Alternative PSGI servers: L<Starman> (a high-performance preforking Perl
-HTTP/1.1 server which also supports Unix socket and multiple ports, but doesn't
-support HTTPS out-of-the-box), L<Starlet> (preforking and HTTP/1.1 but no
-multiple ports/Unix sockets/HTTPS).
-
 L<Perlbal>.
+
+Other PSGI servers that support Unix sockets: L<Starman>.
+
+Other PSGI servers that support HTTPS:
+
+=over
+
+=item * L<Plack::Handler::AnyEvent::HTTPD>
+
+As of Aug 2012 still needs a patch to allow SSL, see
+https://github.com/miyagawa/Plack-Handler-AnyEvent-HTTPD/pull/2#issuecomment-7046948
+
+=back
+
+Please drop me a message if you think other PSGI servers need to be mentioned.
 
 =cut
