@@ -900,7 +900,7 @@ L<Perlbal>.
 
 Other PSGI servers that support Unix sockets: L<Starman>.
 
-Other PSGI servers that support HTTPS:
+Other PSGI servers that support HTTPS out of the box:
 
 =over
 
@@ -910,6 +910,9 @@ As of Aug 2012 still needs a patch to allow SSL, see
 https://github.com/miyagawa/Plack-Handler-AnyEvent-HTTPD/pull/2#issuecomment-7046948
 
 =back
+
+Note that any PSGI server can be used if you setup a front-end HTTPS proxy/load
+balancer.
 
 Please drop me a message if you think other PSGI servers need to be mentioned.
 
