@@ -307,7 +307,7 @@ sub _finalize_response {
     my $chunked;
     my $cl = $headers{'content-length'};
     if ($client_proto eq 'HTTP/1.1') {
-        if ($status =~ /^[123]/ && (!defined($cl) || $cl)) {
+        if ($status =~ /^[123]/ && $status != 304 && (!defined($cl) || $cl)) {
             $chunked = 1;
         }
         if (my $te = $headers{'transfer-encoding'}) {
