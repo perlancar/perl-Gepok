@@ -1,5 +1,13 @@
 Revision history for Gepok
 
+0.25    2014-03-21 (SHARYANTO)
+
+        - Provide 'gepok.httpd_socket' in PSGI environment (mainly so we can
+          call peercred() for Unix sockets).
+
+        - Currently t/certs.t is fudged because I want to rush this release.
+
+
 0.24    2013-02-14 (SHARYANTO)
 
         - No functional changes. Avoid Module::Patch warning.
