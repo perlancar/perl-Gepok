@@ -469,6 +469,7 @@ sub _prepare_env {
         'gepok.finish_request_time' => $self->{_finish_req_time},
         'gepok.client_protocol'     => $self->{_client_proto},
         'gepok.socket'              => $sock,
+        'gepok.httpd_socket'        => $httpd,
     };
     $env->{HTTPS} = 'on' if $is_ssl;
     if ($is_unix) {
@@ -655,9 +656,14 @@ used to avoid sending HTTP/1.1 response to HTTP/1.0 or older clients.
 =item * gepok.socket => OBJ
 
 Raw HTTP::Daemon::ClientConn socket. Can be used to get information about
-socket, e.g. peerport(), peercred(), etc. Should not be used to read/write data
-(use PSGI way for that, e.g. $env->{'psgi.input'}, returning PSGI response,
-etc).
+socket, e.g. peerport(), etc. Should not be used to read/write data (use PSGI
+way for that, e.g. $env->{'psgi.input'}, returning PSGI response, etc).
+
+=item * gepok.httpd_socket => OBJ
+
+Raw HTTP::Daemon socket. Can be used to get information about socket, e.g.
+peercred() (for UNIX sockets), etc. Should not be used to return HTTP response
+directly (use PSGI way for that).
 
 =item * gepok.unix_socket => BOOL
 
