@@ -265,9 +265,6 @@ sub _main_loop {
 sub _finalize_response {
     my($self, $env, $res, $sock) = @_;
 
-    # cache first before close
-    $self->{_sock_peerhost} = ${*$sock}{httpd_daemon}->peerhost // "127.0.0.1";
-
     if ($env->{'psgix.harakiri.commit'}) {
         $self->{_client_keepalive} = 0;
         $self->{_client_harakiri}  = 1;
@@ -404,6 +401,10 @@ sub _handle_psgi {
     my ($self, $req, $sock) = @_;
 
     my $env = $self->_prepare_env($req, $sock);
+
+    # cache first before socket closes
+    $self->{_sock_peerhost} = $env->{REMOTE_ADDR};
+
     my $res = Plack::Util::run_app($self->_app, $env);
 
     # trap i/o error when sending response
