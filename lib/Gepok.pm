@@ -540,7 +540,7 @@ sub access_log {
 
     my $reqh = $req->headers;
     if ($log->is_trace) {
-        $log->tracef("\$self->{sock_peerhost}=%s, (gmtime(\$self->{_finish_req_time}))[0]=%s, \$req->method=%s, \$req->uri->as_string=%s, \$self->{_res_status}=%s, \$self->{res_content_length}=%s, ".
+        $log->tracef("\$self->{_sock_peerhost}=%s, (gmtime(\$self->{_finish_req_time}))[0]=%s, \$req->method=%s, \$req->uri->as_string=%s, \$self->{_res_status}=%s, \$self->{res_content_length}=%s, ".
                          "\$reqh->header('referer')=%s, \$reqh->header('user-agent')=%s",
                      $self->{_sock_peerhost},
                      (gmtime($self->{_finish_req_time}))[0],
