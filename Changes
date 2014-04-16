@@ -1,5 +1,11 @@
 Revision history for Gepok
 
+0.26    2014-04-16 (SHARYANTO)
+
+        - Bugfix: fix setting _sock_peerhost (it used to display 127.0.0.1 all
+          the time).
+
+
 0.25    2014-03-21 (SHARYANTO)
 
         - Provide 'gepok.httpd_socket' in PSGI environment (mainly so we can
