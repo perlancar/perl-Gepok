@@ -1,5 +1,13 @@
 Revision history for Gepok
 
+0.27    2014-06-03 (SHARYANTO)
+
+        - Do not pass Timeout param to HTTP::Daemon::SSL to avoid hanging
+          problem when fed largish request (I'm experiencing request packet, GET
+          or POST, above +- 2048 bytes hangs the server). This is a known issue:
+          RT#45625 [queue HTTP::Daemon:SSL].
+
+
 0.26    2014-04-16 (SHARYANTO)
 
         - Bugfix: fix setting _sock_peerhost (it used to display 127.0.0.1 all
