@@ -180,7 +180,10 @@ sub _after_init {
     for my $port (@$ary) {
         my %args;
         $args{Reuse}   = 1;
-        $args{Timeout} = $self->timeout; # can hang with larger POST?
+
+        # temporarily not passing Timeout param because this does make
+        # request/packet larger than 2k hangs
+        #$args{Timeout} = $self->timeout; # can hang with larger POST?
 
         $args{SSL_key_file}  = $self->ssl_key_file;
         $args{SSL_cert_file} = $self->ssl_cert_file;
