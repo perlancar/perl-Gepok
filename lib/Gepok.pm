@@ -630,10 +630,6 @@ Good performance and reliability.
 
 Gepok can run under B<plackup>, or standalone.
 
-This module uses L<Log::Any> for logging.
-
-This module uses L<Moo> for object system.
-
 
 =head1 PSGI ENVIRONMENT
 
