@@ -18,7 +18,7 @@ use IO::Select;
 use IO::Socket qw(:crlf);
 use Plack::Util;
 use POSIX;
-use SHARYANTO::Proc::Daemon::Prefork;
+use Proc::Daemon::Prefork;
 use Time::HiRes qw(gettimeofday);
 use URI::Escape;
 
@@ -46,7 +46,7 @@ has ssl_cert_file          => (is => 'rw');
 has start_servers          => (is => 'rw', default => sub{3});
 has max_clients            => (is => 'rw', default=>sub{150});
 has max_requests_per_child => (is => 'rw', default=>sub{1000});
-has _daemon                => (is => 'rw'); # SHARYANTO::Proc::Daemon::Prefork
+has _daemon                => (is => 'rw'); # Proc::Daemon::Prefork
 has _server_socks          => (is => 'rw'); # store server sockets
 has _app                   => (is => 'rw'); # store PSGI app
 has product_name           => (is => 'rw');
@@ -86,7 +86,7 @@ sub BUILD {
         die "ssl_verify_callback needs to be a coderef, or constant '1' or '0'" unless ref $vc eq 'CODE';
     }
     unless ($self->_daemon) {
-        my $daemon = SHARYANTO::Proc::Daemon::Prefork->new(
+        my $daemon = Proc::Daemon::Prefork->new(
             name                    => $self->name,
             error_log_path          => $self->error_log_path,
             access_log_path         => $self->access_log_path,
@@ -715,7 +715,7 @@ Socket timeout. Will be passed as Timeout option to HTTP::Daemon's constructor
 
 Whether to require running as root.
 
-Passed to SHARYANTO::Proc::Daemon::Prefork's constructor.
+Passed to Proc::Daemon::Prefork's constructor.
 
 =head2 pid_path => STR (default /var/run/<name>.pid or ~/<name>.pid)
 
