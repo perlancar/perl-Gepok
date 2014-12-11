@@ -1,5 +1,12 @@
 Revision history for Gepok
 
+0.28    2014-12-11 (PERLANCAR)
+
+        - No functional changes.
+
+        - Use new name of renamed module {SHARYANTO-,}Proc-Daemon-Prefork.
+
+
 0.27    2014-06-03 (SHARYANTO)
 
         - Do not pass Timeout param to HTTP::Daemon::SSL to avoid hanging
