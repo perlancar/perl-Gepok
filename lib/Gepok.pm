@@ -1,11 +1,12 @@
 package Gepok;
 
+# DATE
+# VERSION
+
 use 5.010001;
 use strict;
 use warnings;
-use Log::Any '$log';
-
-# VERSION
+use Log::Any::IfLOG '$log';
 
 use File::HomeDir;
 use HTTP::Daemon::Patch::IPv6;
