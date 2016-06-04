@@ -587,7 +587,11 @@ __END__
 
 To run with plackup:
 
- % plackup -s Gepok --daemonize
+ % plackup -s Gepok \
+     --http_ports :8081,:8082,127.0.0.1:8083 \
+     --unix_sockets /var/run/gepok.sock,/tmp/gepok.sock \
+     ...
+     --daemonize
 
 To run standalone:
 
