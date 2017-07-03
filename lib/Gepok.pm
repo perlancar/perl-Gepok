@@ -6,7 +6,7 @@ package Gepok;
 use 5.010001;
 use strict;
 use warnings;
-use Log::Any::IfLOG '$log';
+use Log::ger;
 
 use File::HomeDir;
 use HTTP::Daemon::Patch::IPv6;
@@ -147,7 +147,7 @@ sub _after_init {
         my %args;
         $args{Timeout} = $self->timeout;
         $args{Local}   = $path;
-        $log->infof("Binding to Unix socket %s (http) ...", $path);
+        log_info("Binding to Unix socket %s (http) ...", $path);
         my $sock = HTTP::Daemon::UNIX->new(%args);
         die "Unable to bind to Unix socket $path: $@" unless $sock;
         push @server_socks, $sock;
@@ -169,7 +169,7 @@ sub _after_init {
             die "Invalid http_port syntax `$port`, please specify ".
                 ":N or 1.2.3.4:N";
         }
-        $log->infof("Binding to TCP socket %s (http) ...", $port);
+        log_info("Binding to TCP socket %s (http) ...", $port);
         my $sock = HTTP::Daemon->new(%args);
         die "Unable to bind to TCP socket $port" unless $sock;
         push @server_socks, $sock;
@@ -205,7 +205,7 @@ sub _after_init {
                 ":N or 1.2.3.4:N";
         }
 
-        $log->infof("Binding to TCP socket %s (https) ...", $port);
+        log_info("Binding to TCP socket %s (https) ...", $port);
         my $sock = HTTP::Daemon::SSL->new(%args);
         die "Unable to bind to TCP socket $port, common cause include ".
             "port taken or missing server key/cert file" unless $sock;
@@ -226,9 +226,9 @@ sub before_prefork {}
 sub _main_loop {
     my ($self) = @_;
     if ($self->_daemon->{parent_pid} == $$) {
-        $log->info("Entering main loop");
+        log_info("Entering main loop");
     } else {
-        $log->info("Child process started (PID $$)");
+        log_info("Child process started (PID $$)");
     }
     $self->_daemon->update_scoreboard({child_start_time=>time()});
 
@@ -505,7 +505,7 @@ sub _set_label_serving {
     if ($is_unix) {
         my $sock_path = $httpd->hostpath;
         my ($pid, $uid, $gid) = $httpd->peercred;
-        $log->trace("Unix socket info: path=$sock_path, ".
+        log_trace("Unix socket info: path=$sock_path, ".
                         "pid=$pid, uid=$uid, gid=$gid");
         $self->_daemon->set_label("serving unix (pid=$pid, uid=$uid, ".
                                       "path=$sock_path)");
@@ -514,8 +514,8 @@ sub _set_label_serving {
         my $server_port = $sock->sockport;
         my $remote_ip   = $sock->peerhost // "127.0.0.1";
         my $remote_port = $sock->peerport;
-        if ($log->is_trace) {
-            $log->trace(join("",
+        if (log_is_trace) {
+            log_trace(join("",
                              "TCP socket info: https=$is_ssl, ",
                              "server_port=$server_port, ",
                              "remote_ip=$remote_ip, ",
@@ -544,8 +544,8 @@ sub access_log {
     return unless $self->access_log_path;
 
     my $reqh = $req->headers;
-    if ($log->is_trace) {
-        $log->tracef("\$self->{_sock_peerhost}=%s, (gmtime(\$self->{_finish_req_time}))[0]=%s, \$req->method=%s, \$req->uri->as_string=%s, \$self->{_res_status}=%s, \$self->{res_content_length}=%s, ".
+    if (log_is_trace) {
+        log_trace("\$self->{_sock_peerhost}=%s, (gmtime(\$self->{_finish_req_time}))[0]=%s, \$req->method=%s, \$req->uri->as_string=%s, \$self->{_res_status}=%s, \$self->{res_content_length}=%s, ".
                          "\$reqh->header('referer')=%s, \$reqh->header('user-agent')=%s",
                      $self->{_sock_peerhost},
                      (gmtime($self->{_finish_req_time}))[0],
