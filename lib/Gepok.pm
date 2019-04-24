@@ -394,7 +394,7 @@ sub _write_sock {
             my $written = syswrite $sock, $buffer, length($buffer)-$tot_written,
                 $tot_written;
             # XXX what to do on error, i.e. $written is undef?
-            $tot_written += $written;
+            $tot_written += $written // 0;
             last unless $tot_written < length($buffer);
         }
     }
