@@ -521,8 +521,17 @@ sub _set_label_serving {
                              "remote_ip=$remote_ip, ",
                              "remote_port=$remote_port"));
         }
-        $self->_daemon->set_label("serving TCP :$server_port (https=$is_ssl, ".
-                                      "remote=$remote_ip:$remote_port)");
+        my $num_clients = keys %{$self->_daemon->{children}};
+        my $max_clients = $self->max_clients;
+        $self->_daemon->set_label(
+            sprintf(
+                "%d/%d serving TCP :%d (https=%s, remote=%s:%s",
+                $num_clients, $max_clients,
+                $server_port,
+                $is_ssl,
+                $remote_ip, $remote_port,
+            ),
+        );
     }
 }
 
