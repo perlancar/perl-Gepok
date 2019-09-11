@@ -87,6 +87,7 @@ sub BUILD {
         die "ssl_verify_callback needs to be a coderef, or constant '1' or '0'" unless ref $vc eq 'CODE';
     }
     unless ($self->_daemon) {
+        my $already_init;
         my $daemon = Proc::Daemon::Prefork->new(
             name                    => $self->name,
             error_log_path          => $self->error_log_path,
@@ -96,7 +97,8 @@ sub BUILD {
             daemonize               => $self->daemonize,
             prefork                 => $self->start_servers,
             max_children            => $self->max_clients,
-            after_init              => sub { $self->_after_init },
+            before_daemonize        => sub { $self->_after_init; $already_init++; 1 },
+            after_init              => sub { $self->_after_init unless $already_init },
             main_loop               => sub { $self->_main_loop },
             require_root            => $self->require_root,
             # currently auto reloading is turned off
@@ -219,6 +221,8 @@ sub _after_init {
     $self->_server_socks(\@server_socks);
     warn "Will be binding to ".join(", ", @server_sock_infos)."\n";
     $self->before_prefork();
+
+    1;
 }
 
 sub before_prefork {}
